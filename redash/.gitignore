@@ -1,0 +1,26 @@
+.coveralls.yml
+.idea
+*.pyc
+.coverage
+client/dist
+.DS_Store
+celerybeat-schedule*
+.#*
+\#*#
+*~
+_build
+
+# Vagrant related
+.vagrant
+Berksfile.lock
+redash/dump.rdb
+.env
+.ruby-version
+venv
+
+dump.rdb
+
+node_modules
+.tmp
+.sass-cache
+npm-debug.log
