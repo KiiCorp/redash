@@ -32,6 +32,19 @@ Vagrant.configure("2") do |config|
     curl -sL https://deb.nodesource.com/setup_6.x | bash -
     apt-get install -y nodejs
 
+    # Redash
+    cd /vagrant/redash
+    npm install
+    npm run build
+    rm -rf node_modules
+    docker-compose run --rm server create_db
+
+  SHELL
+
+  config.vm.provision "shell", run: "always", inline: <<-SHELL
+    # Run redash
+    cd /vagrant/redash
+    docker-compose up -d
   SHELL
 
 end
