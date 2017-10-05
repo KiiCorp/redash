@@ -1,0 +1,22 @@
+## Required tool
+
+- [Vagrant](https://www.vagrantup.com/) Confirmed on v1.9.8.
+
+## Development
+
+```console
+# Check out the project
+$ git clone git@github.com:KiiCorp/varanus-redash
+$ cd varanus-redash
+
+# Start Redash in VirtualBox
+$ vagrant up
+
+# Access http://127.0.0.1:5000 by your browser
+```
+
+When you modify redash source code, you need to restart redash server.
+
+```console
+$ vagrant ssh -- docker-compose -f /vagrant/redash/docker-compose.yml restart server
+```
