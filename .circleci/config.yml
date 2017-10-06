@@ -10,7 +10,7 @@ jobs:
           name: Build redash docker image
           command: |
             cd redash
-            docker build .
+            docker build -t varanus-redash .
       - run:
           name: List docker images
           command: docker image list
