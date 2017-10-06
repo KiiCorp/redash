@@ -7,10 +7,10 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-        name: Build redash docker image
-        command: |
-          cd redash
-          docker build .
+          name: Build redash docker image
+          command: |
+            cd redash
+            docker build .
       - run:
-        name: List docker images
-        command: docker image list
+          name: List docker images
+          command: docker image list
