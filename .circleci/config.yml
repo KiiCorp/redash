@@ -1,13 +1,16 @@
 version: 2
 jobs:
-   build:
-     docker:
+  build:
+    docker:
       - image: docker:stable-git
-     steps:
-       - checkout
-       - setup_remote_docker
-       - run:
-           name: Build redash docker image
-           command: |
-            cd redash
-            docker build .
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+        name: Build redash docker image
+        command: |
+          cd redash
+          docker build .
+      - run:
+        name: List docker images
+        command: docker image list
