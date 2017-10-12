@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/KiiCorp/varanus-redash/tree/master.svg?style=svg&circle-token=16fe9993352db9088fdd2ff6cae9e656b810fe94)](https://circleci.com/gh/KiiCorp/varanus-redash/tree/master)
+
 ## Required tool
 
 - [Vagrant](https://www.vagrantup.com/) Confirmed on v1.9.8.
