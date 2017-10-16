@@ -11,7 +11,7 @@ from redash.handlers.data_sources import DataSourceTypeListResource, DataSourceL
 from redash.handlers.events import EventResource
 from redash.handlers.queries import QueryForkResource, QueryRefreshResource, QueryListResource, QueryRecentResource, QuerySearchResource, QueryResource, MyQueriesResource
 from redash.handlers.query_results import QueryResultListResource, QueryResultResource, JobResource
-from redash.handlers.users import UserResource, UserListResource, UserInviteResource, UserResetPasswordResource
+from redash.handlers.users import UserResource, UserListResource, UserInviteResource, UserResetPasswordResource, UserCreateResource
 from redash.handlers.visualizations import VisualizationListResource
 from redash.handlers.visualizations import VisualizationResource
 from redash.handlers.widgets import WidgetResource, WidgetListResource
@@ -89,6 +89,7 @@ api.add_org_resource(UserListResource, '/api/users', endpoint='users')
 api.add_org_resource(UserResource, '/api/users/<user_id>', endpoint='user')
 api.add_org_resource(UserInviteResource, '/api/users/<user_id>/invite', endpoint='user_invite')
 api.add_org_resource(UserResetPasswordResource, '/api/users/<user_id>/reset_password', endpoint='user_reset_password')
+api.add_org_resource(UserCreateResource, '/api/users/create', endpoint='users_create')
 
 api.add_org_resource(VisualizationListResource, '/api/visualizations', endpoint='visualizations')
 api.add_org_resource(VisualizationResource, '/api/visualizations/<visualization_id>', endpoint='visualization')
