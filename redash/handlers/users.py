@@ -1,5 +1,5 @@
 import time
-from flask import request
+from flask import make_response, request
 from flask_restful import abort
 from funcy import project
 from sqlalchemy.exc import IntegrityError
@@ -160,4 +160,12 @@ class UserResource(BaseResource):
 
         return user.to_dict(with_api_key=is_admin_or_owner(user_id))
 
+    @require_admin
+    def delete(self, user_id):
+        try:
+            models.User.query.filter(models.User.id == user_id, models.User.org == self.current_org).delete()
+            models.db.session.commit()
+        except IntegrityError as e:
+            abort(500)
 
+        return make_response('', 204)
