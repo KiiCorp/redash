@@ -8,9 +8,9 @@ from redash import models, serializers, settings
 from redash.handlers.base import BaseResource, get_object_or_404
 from redash.permissions import (can_modify, require_admin_or_owner,
                                 require_object_modify_permission,
-                                require_permission)
+                                require_permission, require_admin)
 from sqlalchemy.orm.exc import StaleDataError
-
+from sqlalchemy.exc import IntegrityError
 
 class RecentDashboardsResource(BaseResource):
     @require_permission('list_dashboards')
@@ -229,3 +229,18 @@ class DashboardShareResource(BaseResource):
             'object_id': dashboard.id,
             'object_type': 'dashboard',
         })
+
+class DashboardUserResource(BaseResource):
+    @require_admin
+    def delete(self, user_id):
+        dashboards = models.Dashboard.query.filter(models.Dashboard.user_id == user_id)
+        id = []
+        for i, dashboard in enumerate(dashboards):
+            id.append(dashboard.id)
+        print id
+        models.Widget.query.filter(models.Widget.dashboard_id.in_(id)).delete(synchronize_session='fetch')
+        dashboards.delete()
+        try:
+            models.db.session.commit()
+        except IntegrityError as e:
+            abort(500)
