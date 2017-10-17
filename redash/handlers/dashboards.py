@@ -234,10 +234,7 @@ class DashboardUserResource(BaseResource):
     @require_admin
     def delete(self, user_id):
         dashboards = models.Dashboard.query.filter(models.Dashboard.user_id == user_id)
-        id = []
-        for i, dashboard in enumerate(dashboards):
-            id.append(dashboard.id)
-        print id
+        id = [dashboard.id for dashboard in dashboards]
         models.Widget.query.filter(models.Widget.dashboard_id.in_(id)).delete(synchronize_session='fetch')
         dashboards.delete()
         try:
