@@ -84,7 +84,7 @@ class UserCreateResource(BaseResource):
             'object_type': 'user'
         })
 
-        d = user.to_dict()
+        d = user.to_dict(with_api_key=True)
 
         return d
 
