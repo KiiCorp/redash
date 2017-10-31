@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from redash import models
 from redash.permissions import require_permission, require_admin_or_owner, is_admin_or_owner, \
     require_permission_or_owner, require_admin
-from redash.handlers.base import BaseResource, require_fields, get_object_or_404
+from redash.handlers.base import BaseResource, NoCheckResource, require_fields, get_object_or_404
 
 from redash.authentication.account import invite_link_for_user, send_invite_email, send_password_reset_email
 
@@ -109,6 +109,16 @@ class UserResetPasswordResource(BaseResource):
         return {
             'reset_link': reset_link,
         }
+
+
+class UserForcibleGetResource(NoCheckResource):
+    def get(self):
+        args = request.args
+        user = get_object_or_404(models.User.get_by_email_and_org, args['email'], self.current_org)
+        if not user.verify_password(args['password']):
+            abort(404)
+
+        return user.to_dict(True)
 
 
 class UserResource(BaseResource):
