@@ -1,4 +1,3 @@
-import logging
 from itertools import chain
 
 from flask import make_response, request, url_for, Response
