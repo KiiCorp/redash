@@ -1,6 +1,7 @@
+import logging
 from itertools import chain
 
-from flask import make_response, request, url_for
+from flask import make_response, request, url_for, Response
 from funcy import distinct, project, take
 
 from flask_restful import abort
@@ -242,4 +243,4 @@ class DashboardUserResource(BaseResource):
         except IntegrityError as e:
             abort(500)
 
-        return make_response('', 204)
+        return Response(status = 204, content_type = "")
