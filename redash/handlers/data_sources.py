@@ -1,6 +1,6 @@
 import logging
 
-from flask import make_response, request
+from flask import make_response, request, Response
 from flask_restful import abort
 from funcy import project
 from sqlalchemy.exc import IntegrityError
@@ -60,7 +60,7 @@ class DataSourceResource(BaseResource):
         data_source = models.DataSource.get_by_id_and_org(data_source_id, self.current_org)
         data_source.delete()
 
-        return make_response('', 204)
+        return Response(status = 204, content_type = "")
 
 
 class DataSourceListResource(BaseResource):
