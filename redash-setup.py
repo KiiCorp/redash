@@ -9,6 +9,8 @@ from flask import current_app
 
 from redash import create_app
 
+from sqlalchemy.exc import OperationalError
+
 def create(group):
     app = current_app or create_app()
     return app
@@ -21,6 +23,19 @@ def cli():
 def bootstrap():
     """Setup with developmnet admin"""
     from redash import models
+
+    isConnected = True
+    for i in range(3):
+        isConnected = True
+        try:
+            models.db.engine.connect()
+        except OperationalError:
+            isConnected = False
+        if isConnected:
+            break
+
+    if not(isConnected):
+        raise RuntimeError("fail to connect db.")
 
     org_name = 'Development'
     org_slug = 'default'
