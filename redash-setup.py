@@ -11,6 +11,8 @@ from redash import create_app
 
 from sqlalchemy.exc import OperationalError
 
+from time import sleep
+
 def create(group):
     app = current_app or create_app()
     return app
@@ -20,8 +22,8 @@ def cli():
     """Initial script for redash"""
 
 @cli.command()
-def bootstrap():
-    """Setup with developmnet admin"""
+def wait():
+    """Wait other services up"""
     from redash import models
 
     isConnected = True
@@ -33,9 +35,15 @@ def bootstrap():
             isConnected = False
         if isConnected:
             break
+        sleep(5)
 
     if not(isConnected):
         raise RuntimeError("fail to connect db.")
+
+@cli.command()
+def bootstrap():
+    """Setup with developmnet admin"""
+    from redash import models
 
     org_name = 'Development'
     org_slug = 'default'
