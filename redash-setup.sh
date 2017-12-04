@@ -4,7 +4,5 @@ set -eu
 
 python /app/redash-setup.py wait
 /app/bin/docker-entrypoint create_db
-/app/bin/docker-entrypoint server &
-PID=$!
+nohup /app/bin/docker-entrypoint server &
 python /app/redash-setup.py bootstrap
-wait $PID
