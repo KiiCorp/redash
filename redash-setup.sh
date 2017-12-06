@@ -2,7 +2,5 @@
 
 set -eu
 
-python /app/redash-setup.py wait
-/app/bin/docker-entrypoint create_db
-python /app/redash-setup.py bootstrap
+python /app/redash-setup.py setup --name="${REDASH_ADMIN_NAME}" --email="${REDASH_ADMIN_EMAIL}$" --password="${REDASH_ADMIN_PASSWORD}"
 exec /app/bin/docker-entrypoint server 
