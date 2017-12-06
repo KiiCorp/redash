@@ -22,12 +22,7 @@ def create(group):
 def cli():
     """Initial script for redash"""
 
-@cli.command()
 def wait():
-    """Wait other services up"""
-    wait2()
-
-def wait2():
     from redash import models
 
     isConnected = True
@@ -45,28 +40,14 @@ def wait2():
     if not(isConnected):
         raise RuntimeError("fail to connect db.")
 
-@cli.command()
 def create_db():
-    """Create database"""
-    create_db2()
-
-def create_db2():
     from redash.models import db
     db.create_all()
 
     # Need to mark current DB as up to date
     stamp()
 
-@cli.command()
-def bootstrap():
-    """Setup with developmnet admin"""
-
-    user_name = os.getenv('REDASH_ADMIN_NAME', 'Dev Admin')
-    user_email = os.getenv('REDASH_ADMIN_EMAIL', 'devad@example.org')
-    user_password = os.getenv('REDASH_ADMIN_PASSWORD', 'devad123')
-    bootstrap2(user_name, user_email, user_password)
-
-def bootstrap2(name, email, password):
+def bootstrap(name, email, password):
     from redash import models
 
     org_name = 'Development'
@@ -96,9 +77,9 @@ def bootstrap2(name, email, password):
 @click.option('--email')
 @click.option('--password')
 def setup(name, email, password):
-    wait2()
-    create_db2()
-    bootstrap2(name, email, password)
+    wait()
+    create_db()
+    bootstrap(name, email, password)
 
 if __name__ == '__main__':
     cli()
