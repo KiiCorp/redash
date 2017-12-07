@@ -53,24 +53,40 @@ def bootstrap(name, email, password):
     org_name = 'Development'
     org_slug = 'default'
 
-    # Create primary organization and groups: admin and default.
-    default_org = models.Organization(name=org_name, slug=org_slug,
-            settings={})
-    admin_group = models.Group(name='admin',
-            permissions=['admin', 'super_admin'], org=default_org,
-            type=models.Group.BUILTIN_GROUP)
-    default_group = models.Group(name='default',
-            permissions=models.Group.DEFAULT_PERMISSIONS, org=default_org,
-            type=models.Group.BUILTIN_GROUP)
-    models.db.session.add_all([default_org, admin_group, default_group])
+    # Chech and create primary organization.
+    default_org = models.Organization.get_by_slug(org_slug)
+    if default_org is None:
+        default_org = models.Organization(name=org_name, slug=org_slug,
+                                          settings={})
+        models.db.session.add(default_org)
+
+    # Check and create admin group.
+    admin_group = default_org.admin_group
+    if admin_group is None:
+        admin_group = models.Group(name='admin',
+                                   permissions=['admin', 'super_admin'],
+                                   org=default_org,
+                                   type=models.Group.BUILTIN_GROUP)
+        models.db.session.add(admin_group)
+
+    # Check and create default group.
+    default_group = default_org.default_group
+    if default_group is None:
+        default_group = models.Group(name='default',
+                                     permissions=models.Group.DEFAULT_PERMISSIONS,
+                                     org=default_org,
+                                     type=models.Group.BUILTIN_GROUP)
+        models.db.session.add(default_group)
+
     models.db.session.commit()
 
-    # Create an administrator for development.
-    user = models.User(org=default_org, name=name, email=email,
-            group_ids=[admin_group.id, default_group.id])
-    user.hash_password(password)
-    models.db.session.add(user)
-    models.db.session.commit()
+    # Check and create an administrator for development.
+    if models.User.query.filter(models.User.email == email, models.User.org == default_org).count() == 0:
+        user = models.User(org=default_org, name=name, email=email,
+                           group_ids=[admin_group.id, default_group.id])
+        user.hash_password(password)
+        models.db.session.add(user)
+        models.db.session.commit()
 
 @cli.command()
 @click.option('--name')
