@@ -26,7 +26,7 @@ def wait():
     from redash import models
 
     isConnected = True
-    for i in range(3):
+    for i in range(6):
         isConnected = True
         try:
             conn = models.db.engine.connect()
@@ -35,7 +35,7 @@ def wait():
         if isConnected:
             conn.close()
             break
-        sleep(5)
+        sleep(10)
 
     if not(isConnected):
         raise RuntimeError("fail to connect db.")
