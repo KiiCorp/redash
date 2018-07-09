@@ -142,14 +142,17 @@ class PostgreSQL(BaseSQLQueryRunner):
 
         return connection
 
-    def run_query(self, query, user):
+    def run_query(self, query, user, prepared_text=None, values=None):
         connection = self._get_connection()
         _wait(connection, timeout=10)
 
         cursor = connection.cursor()
 
         try:
-            cursor.execute(query)
+            if prepared_text and values:
+                cursor.execute(prepared_text, values)
+            else:
+                cursor.execute(query)
             _wait(connection)
 
             if cursor.description is not None:
