@@ -2,6 +2,8 @@ import logging
 import json
 import time
 
+from inspect import ismethod, getargspec
+
 import pystache
 from flask import make_response, request
 from flask_login import current_user
@@ -12,23 +14,12 @@ from redash.permissions import require_permission, not_view_only, has_access, re
 from redash.handlers.base import BaseResource, get_object_or_404
 from redash.utils import collect_query_parameters, collect_parameters_from_request, gen_query_hash
 from redash.tasks.queries import enqueue_query
-from redash.query_runner.pg import PostgreSQL
 
-from inspect import getmembers
-
-def is_secure_postgres_query_runner(fn):
-    cls = [x for x in getmembers(fn) if x[0] in ['im_class']]
-    if len(cls) != 1:
+def is_secure_data_source(data_source):
+    if not ismethod(data_source.query_runner.run_query):
         return False
-    if cls[0][1] != PostgreSQL:
-        return False
-    func = [x for x in getmembers(fn) if x[0] in ['__func__']]
-    if len(func) != 1:
-        return False
-    info = [x for x in getmembers(func[0][1]) if x[0] in ['__defaults__']]
-    if len(info) != 1:
-        return False
-    return info[0][1] == (None, None)
+    spec = getargspec(data_source.query_runner.run_query)
+    return spec == (['self', 'query', 'user', 'params'], None, None, (None,))
 
 def error_response(message):
     return {'job': {'status': 4, 'error': message}}, 400
@@ -63,8 +54,8 @@ def run_query_sync(data_source, parameter_values, query_text, max_age=0):
 
     try:
         started_at = time.time()
-        if is_secure_postgres_query_runner(data_source.query_runner.run_query):
-            data, error = run_query_with_secure_postgres(data_source, query_text, original_query_text, parameter_values, current_user)
+        if is_secure_data_source(data_source):
+            data, error = data_source.query_runner.run_query(original_query_text, current_user, parameter_values)
         else:
             data, error = data_source.query_runner.run_query(query_text, current_user)
 
@@ -86,12 +77,6 @@ def run_query_sync(data_source, parameter_values, query_text, max_age=0):
         else:
             abort(503, message="Unable to get result from the database.")
         return None
-
-def run_query_with_secure_postgres(data_source, query_text, prepared_text, values, user):
-    for k in values.keys():
-        prepared_text = prepared_text.replace("'{{{{{0}}}}}'".format(k),  '%({0})s'.format(k))
-        prepared_text = prepared_text.replace('{{{{{0}}}}}'.format(k),  '%({0})s'.format(k))
-    return data_source.query_runner.run_query(query_text, user, prepared_text, values)
 
 def run_query(data_source, parameter_values, query_text, query_id, max_age=0):
     query_parameters = set(collect_query_parameters(query_text))

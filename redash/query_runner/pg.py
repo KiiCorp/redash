@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import select
+import re
 
 import psycopg2
 
@@ -142,15 +143,18 @@ class PostgreSQL(BaseSQLQueryRunner):
 
         return connection
 
-    def run_query(self, query, user, prepared_text=None, values=None):
+    def run_query(self, query, user, params=None):
         connection = self._get_connection()
         _wait(connection, timeout=10)
 
         cursor = connection.cursor()
 
         try:
-            if prepared_text and values:
-                cursor.execute(prepared_text, values)
+            if params:
+                prepared_statement = query
+                for k in params.keys():
+                    prepared_statement = re.sub(r'([\']?){{{{{0}}}}}\1'.format(k), '%({0})s'.format(k), prepared_statement)
+                cursor.execute(prepared_statement, params)
             else:
                 cursor.execute(query)
             _wait(connection)
