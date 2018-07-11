@@ -2,6 +2,9 @@ import datetime
 import json
 import logging
 import sys
+import re
+
+import pystache
 
 from redash.query_runner import *
 from redash.utils import json_dumps
@@ -215,6 +218,74 @@ class Python(BaseQueryRunner):
 
     def test_connection(self):
         pass
+
+    def run_secure_query(self, query, params, user):
+        try:
+            error = None
+
+            local_vals = {'local_vals': params}
+            local_vals.update(self._script_locals)
+            regular_query = re.sub(r'([\'"]?){{(.*?)}}\1', r"local_vals['{{\2}}']", query)
+            place_holders = {}
+            for k in params.keys():
+                place_holders[k] = k
+            secure_query = pystache.render(regular_query, place_holders)
+            code = compile_restricted(secure_query, '<string>', 'exec')
+
+            # The codes below are copied from run_query.
+            builtins = safe_builtins.copy()
+            builtins["_write_"] = self.custom_write
+            builtins["__import__"] = self.custom_import
+            builtins["_getattr_"] = getattr
+            builtins["getattr"] = getattr
+            builtins["_setattr_"] = setattr
+            builtins["setattr"] = setattr
+            builtins["_getitem_"] = self.custom_get_item
+            builtins["_getiter_"] = self.custom_get_iter
+            builtins["_print_"] = self._custom_print
+
+            # Layer in our own additional set of builtins that we have
+            # considered safe.
+            for key in self.safe_builtins:
+                builtins[key] = __builtins__[key]
+
+            restricted_globals = dict(__builtins__=builtins)
+            restricted_globals["get_query_result"] = self.get_query_result
+            restricted_globals["get_source_schema"] = self.get_source_schema
+            restricted_globals["execute_query"] = self.execute_query
+            restricted_globals["add_result_column"] = self.add_result_column
+            restricted_globals["add_result_row"] = self.add_result_row
+            restricted_globals["disable_print_log"] = self._custom_print.disable
+            restricted_globals["enable_print_log"] = self._custom_print.enable
+
+            # Supported data types
+            restricted_globals["TYPE_DATETIME"] = TYPE_DATETIME
+            restricted_globals["TYPE_BOOLEAN"] = TYPE_BOOLEAN
+            restricted_globals["TYPE_INTEGER"] = TYPE_INTEGER
+            restricted_globals["TYPE_STRING"] = TYPE_STRING
+            restricted_globals["TYPE_DATE"] = TYPE_DATE
+            restricted_globals["TYPE_FLOAT"] = TYPE_FLOAT
+
+
+            # TODO: Figure out the best way to have a timeout on a script
+            #       One option is to use ETA with Celery + timeouts on workers
+            #       And replacement of worker process every X requests handled.
+
+            # This is different from run_query.
+            # Third parameter is changed from self._script_locals to local_vals.
+            exec((code), restricted_globals, local_vals)
+
+            result = self._script_locals['result']
+            result['log'] = self._custom_print.lines
+            json_data = json_dumps(result)
+        except KeyboardInterrupt:
+            error = "Query cancelled by user."
+            json_data = None
+        except Exception as e:
+            error = str(type(e)) + " " + str(e)
+            json_data = None
+
+        return json_data, error
 
     def run_query(self, query, user):
         try:
