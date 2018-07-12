@@ -143,6 +143,13 @@ class PostgreSQL(BaseSQLQueryRunner):
 
         return connection
 
+    def to_secure_query(self, raw_tex, params):
+        query = re.sub(r'([\']?){{(.*?)}}\1', r'{{\2}}', raw_tex)
+        place_holders = {}
+        for k in params.keys():
+            place_holders[k] = '%({0})s'.format(k)
+        return query, place_holders
+
     def run_query(self, query, user, params=None):
         connection = self._get_connection()
         _wait(connection, timeout=10)
@@ -151,10 +158,7 @@ class PostgreSQL(BaseSQLQueryRunner):
 
         try:
             if params:
-                prepared_statement = query
-                for k in params.keys():
-                    prepared_statement = re.sub(r'([\']?){{{{{0}}}}}\1'.format(k), '%({0})s'.format(k), prepared_statement)
-                cursor.execute(prepared_statement, params)
+                cursor.execute(query, params)
             else:
                 cursor.execute(query)
             _wait(connection)
