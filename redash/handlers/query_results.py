@@ -15,10 +15,10 @@ from redash.handlers.base import BaseResource, get_object_or_404
 from redash.utils import collect_query_parameters, collect_parameters_from_request, gen_query_hash
 from redash.tasks.queries import enqueue_query
 
-def is_secure_data_source(data_source):
-    if not hasattr(data_source.query_runner, 'to_secure_query'):
+def can_query_securely(data_source):
+    if not hasattr(data_source.query_runner, 'run_secure_query'):
         return False
-    return ismethod(data_source.query_runner.to_secure_query)
+    return ismethod(data_source.query_runner.run_secure_query)
 
 def error_response(message):
     return {'job': {'status': 4, 'error': message}}, 400
@@ -53,10 +53,8 @@ def run_query_sync(data_source, parameter_values, query_text, max_age=0):
 
     try:
         started_at = time.time()
-        if is_secure_data_source(data_source):
-            s, d = data_source.query_runner.to_secure_query(original_query_text, parameter_values)
-            s = pystache.render(s, d)
-            data, error = data_source.query_runner.run_query(s, current_user, parameter_values)
+        if can_query_securely(data_source):
+            data, error = data_source.query_runner.run_secure_query(original_query_text, parameter_values, current_user)
         else:
             data, error = data_source.query_runner.run_query(query_text, current_user)
 
