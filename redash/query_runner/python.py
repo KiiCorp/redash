@@ -275,7 +275,7 @@ class Python(BaseQueryRunner):
             # Third parameter is changed from self._script_locals to local_vals.
             exec((code), restricted_globals, local_vals)
 
-            result = self._script_locals['result']
+            result = local_vals['result']
             result['log'] = self._custom_print.lines
             json_data = json_dumps(result)
         except KeyboardInterrupt:
