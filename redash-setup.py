@@ -47,7 +47,7 @@ def create_db():
     # Need to mark current DB as up to date
     stamp()
 
-def bootstrap(name, email, password):
+def bootstrap(name, email, password, datasource_name):
     from redash import models
 
     org_name = 'Development'
@@ -78,6 +78,16 @@ def bootstrap(name, email, password):
                                      type=models.Group.BUILTIN_GROUP)
         models.db.session.add(default_group)
 
+    # Check and create shared python data source.
+    if datasource_name is not None:
+        if models.DataSource.query.filter(models.DataSource.name == datasource_name, models.DataSource.org == default_org).count() == 0:
+            shared_datasource = models.DataSource(org=default_org,
+                                                  name=datasource_name,
+                                                  type="python",
+                                                  options={})
+            models.db.session.add(shared_datasource)
+            shared_datasource.add_group(admin_group)
+
     models.db.session.commit()
 
     # Check and create an administrator for development.
@@ -92,10 +102,11 @@ def bootstrap(name, email, password):
 @click.option('--name')
 @click.option('--email')
 @click.option('--password')
-def setup(name, email, password):
+@click.option('--shared_datasource')
+def setup(name, email, password, shared_datasource):
     wait()
     create_db()
-    bootstrap(name, email, password)
+    bootstrap(name, email, password, shared_datasource)
 
 if __name__ == '__main__':
     cli()
