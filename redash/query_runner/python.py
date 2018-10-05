@@ -156,6 +156,57 @@ class Python(BaseQueryRunner):
         result["rows"].append(values)
 
     @staticmethod
+    def can_access(user, data_source):
+        """Check user can access data source.
+
+        Parameters:
+        :user: user to access data_source
+        :data_source: data source to be accessed.
+        :return:
+        """
+
+        # check user is super admin.
+        for gid in user.group_ids:
+            org = models.Organization.query.filter(models.Organization.id == user.org_id).one()
+            group = models.Group.get_by_id_and_org(gid, org)
+            if "super_admin" in group.permissions:
+                return True
+
+        # check user can access the data source.
+        for gid in data_source.groups:
+            if gid in user.group_ids:
+                return True
+
+        return False
+
+    @staticmethod
+    def execute_query2(data_source_name_or_id, query, user):
+        """Run query from specific data source.
+
+        Parameters:
+        :data_source_name_or_id string|integer: Name or ID of the data source
+        :query string: Query to run
+        :user models.User: user to execute query
+        """
+        try:
+            if type(data_source_name_or_id) == int:
+                data_source = models.DataSource.get_by_id(data_source_name_or_id)
+            else:
+                data_source = models.DataSource.get_by_name(data_source_name_or_id)
+        except models.NoResultFound:
+            raise Exception("Wrong data source name/id: %s." % data_source_name_or_id)
+
+        if not Python.can_access(user, data_source):
+            raise Exception("Can't access data source name/id: %s." % data_source_name_or_id)
+
+        data, error = data_source.query_runner.run_query(query, None)
+        if error is not None:
+            raise Exception(error)
+
+        # TODO: allow avoiding the json.dumps/loads in same process
+        return json.loads(data)
+
+    @staticmethod
     def execute_query(data_source_name_or_id, query):
         """Run query from specific data source.
 
@@ -178,6 +229,26 @@ class Python(BaseQueryRunner):
 
         # TODO: allow avoiding the json.dumps/loads in same process
         return json.loads(data)
+
+    @staticmethod
+    def get_source_schema2(data_source_name_or_id, user):
+        """Get schema from specific data source.
+
+        :param data_source_name_or_id: string|integer: Name or ID of the data source
+        :user models.User: user to get source schema
+        :return:
+        """
+        try:
+            if type(data_source_name_or_id) == int:
+                data_source = models.DataSource.get_by_id(data_source_name_or_id)
+            else:
+                data_source = models.DataSource.get_by_name(data_source_name_or_id)
+            if not Python.can_access(user, data_source):
+                raise Exception("Can't access data source name/id: %s." % data_source_name_or_id)
+        except models.NoResultFound:
+            raise Exception("Wrong data source name/id: %s." % data_source_name_or_id)
+        schema = data_source.query_runner.get_schema()
+        return schema
 
     @staticmethod
     def get_source_schema(data_source_name_or_id):
@@ -252,7 +323,9 @@ class Python(BaseQueryRunner):
             restricted_globals = dict(__builtins__=builtins)
             restricted_globals["get_query_result"] = self.get_query_result
             restricted_globals["get_source_schema"] = self.get_source_schema
+            restricted_globals["get_source_schema2"] = lambda data_source_name_or_id: self.get_source_schema2(data_source_name_or_id, user)
             restricted_globals["execute_query"] = self.execute_query
+            restricted_globals["execute_query2"] = lambda data_source_name_or_id, query: self.execute_query2(data_source_name_or_id, query, user)
             restricted_globals["add_result_column"] = self.add_result_column
             restricted_globals["add_result_row"] = self.add_result_row
             restricted_globals["disable_print_log"] = self._custom_print.disable
@@ -312,7 +385,9 @@ class Python(BaseQueryRunner):
             restricted_globals = dict(__builtins__=builtins)
             restricted_globals["get_query_result"] = self.get_query_result
             restricted_globals["get_source_schema"] = self.get_source_schema
+            restricted_globals["get_source_schema2"] = lambda data_source_name_or_id: self.get_source_schema2(data_source_name_or_id, user)
             restricted_globals["execute_query"] = self.execute_query
+            restricted_globals["execute_query2"] = lambda data_source_name_or_id, query: self.execute_query2(data_source_name_or_id, query, user)
             restricted_globals["add_result_column"] = self.add_result_column
             restricted_globals["add_result_row"] = self.add_result_row
             restricted_globals["disable_print_log"] = self._custom_print.disable
