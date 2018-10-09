@@ -180,24 +180,21 @@ class Python(BaseQueryRunner):
         return False
 
     @staticmethod
-    def execute_query2(data_source_name_or_id, query, user):
+    def execute_query2(data_source_name, query, user):
         """Run query from specific data source.
 
         Parameters:
-        :data_source_name_or_id string|integer: Name or ID of the data source
+        :data_source_name string: Name of the data source
         :query string: Query to run
         :user models.User: user to execute query
         """
         try:
-            if type(data_source_name_or_id) == int:
-                data_source = models.DataSource.get_by_id(data_source_name_or_id)
-            else:
-                data_source = models.DataSource.get_by_name(data_source_name_or_id)
+            data_source = models.DataSource.get_by_name(data_source_name)
         except models.NoResultFound:
-            raise Exception("Wrong data source name/id: %s." % data_source_name_or_id)
+            raise Exception("Wrong data source name: %s." % data_source_name)
 
         if not Python.can_access(user, data_source):
-            raise Exception("Can't access data source name/id: %s." % data_source_name_or_id)
+            raise Exception("Can't access data source name: %s." % data_source_name)
 
         data, error = data_source.query_runner.run_query(query, None)
         if error is not None:
@@ -231,22 +228,19 @@ class Python(BaseQueryRunner):
         return json.loads(data)
 
     @staticmethod
-    def get_source_schema2(data_source_name_or_id, user):
+    def get_source_schema2(data_source_name, user):
         """Get schema from specific data source.
 
-        :param data_source_name_or_id: string|integer: Name or ID of the data source
+        :param data_source_name: string: Name of the data source
         :user models.User: user to get source schema
         :return:
         """
         try:
-            if type(data_source_name_or_id) == int:
-                data_source = models.DataSource.get_by_id(data_source_name_or_id)
-            else:
-                data_source = models.DataSource.get_by_name(data_source_name_or_id)
-            if not Python.can_access(user, data_source):
-                raise Exception("Can't access data source name/id: %s." % data_source_name_or_id)
+            data_source = models.DataSource.get_by_name(data_source_name)
         except models.NoResultFound:
-            raise Exception("Wrong data source name/id: %s." % data_source_name_or_id)
+            raise Exception("Wrong data source name: %s." % data_source_name)
+        if not Python.can_access(user, data_source):
+            raise Exception("Can't access data source name: %s." % data_source_name)
         schema = data_source.query_runner.get_schema()
         return schema
 
