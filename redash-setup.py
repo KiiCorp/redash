@@ -47,7 +47,7 @@ def create_db():
     # Need to mark current DB as up to date
     stamp()
 
-def bootstrap(name, email, password, datasource_name):
+def bootstrap(name, email, password):
     from redash import models
 
     org_name = 'Development'
@@ -78,15 +78,44 @@ def bootstrap(name, email, password, datasource_name):
                                      type=models.Group.BUILTIN_GROUP)
         models.db.session.add(default_group)
 
-    # Check and create shared python data source.
-    if datasource_name is not None:
-        if models.DataSource.query.filter(models.DataSource.name == datasource_name, models.DataSource.org == default_org).count() == 0:
-            shared_datasource = models.DataSource(org=default_org,
-                                                  name=datasource_name,
-                                                  type="python",
-                                                  options={})
-            models.db.session.add(shared_datasource)
-            shared_datasource.add_group(admin_group)
+    # Check and create shared group.
+    shared_group_name = 'Shared'
+    query = models.Group.query.filter(models.Group.name == shared_group_name,
+                                      models.Group.org == default_org)
+    count = query.count()
+    shared_group = None
+    if count == 0:
+        shared_group = models.Group(name=shared_group_name,
+                                    permissions=['view_query', 'execute_query'],
+                                    org=default_org,
+                                    type=models.Group.REGULAR_GROUP)
+        models.db.session.add(shared_group)
+    elif count == 1:
+        shared_group = query.one()
+    else:
+        raise Exception('more than one shared group exists')
+
+    # Check and create shared data source.
+    shared_datasource_name = 'Shared Data Source'
+    query = models.DataSource.query.filter(models.DataSource.name == shared_datasource_name,
+                                           models.DataSource.org == default_org)
+    count = query.count()
+    if count == 0:
+        shared_datasource = models.DataSource(org=default_org,
+                                              name=shared_datasource_name,
+                                              type='python',
+                                              options={})
+        data_source_group_admin = models.DataSourceGroup(
+            data_source=shared_datasource,
+            group=admin_group,
+            view_only=False)
+        data_source_group_shared = models.DataSourceGroup(
+            data_source=shared_datasource,
+            group=shared_group,
+            view_only=True)
+        models.db.session.add_all([shared_datasource, data_source_group_admin, data_source_group_shared])
+    elif count != 1:
+        raise Exception('more than one shared data source exists')
 
     models.db.session.commit()
 
@@ -102,11 +131,10 @@ def bootstrap(name, email, password, datasource_name):
 @click.option('--name')
 @click.option('--email')
 @click.option('--password')
-@click.option('--shared_datasource')
-def setup(name, email, password, shared_datasource):
+def setup(name, email, password):
     wait()
     create_db()
-    bootstrap(name, email, password, shared_datasource)
+    bootstrap(name, email, password)
 
 if __name__ == '__main__':
     cli()
