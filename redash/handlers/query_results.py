@@ -200,11 +200,8 @@ class QueryResultResource(BaseResource):
             query = get_object_or_404(models.Query.get_by_id_and_org, query_id, self.current_org)
 
             if query_result is None and query is not None:
-                if settings.ALLOW_PARAMETERS_IN_EMBEDS and parameter_values:
+                if settings.ALLOW_PARAMETERS_IN_EMBEDS and self.has_parameter(query.to_dict()['query']):
                     query_result = run_query_sync(query.data_source, parameter_values, query.to_dict()['query'], max_age=max_age)
-                elif settings.ALLOW_PARAMETERS_IN_EMBEDS and query.data_source.type == 'python':
-                    if collect_query_parameters(query.to_dict()['query']):
-                        abort(404, message='parameter is required.')
                 elif query.latest_query_data_id is not None:
                     query_result = get_object_or_404(models.QueryResult.get_by_id_and_org, query.latest_query_data_id, self.current_org)
                 
@@ -269,6 +266,9 @@ class QueryResultResource(BaseResource):
         headers = {'Content-Type': "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
         return make_response(query_result.make_excel_content(), 200, headers)
 
+    @staticmethod
+    def has_parameter(query_text):
+        return len(collect_query_parameters(query_text)) > 0
 
 class JobResource(BaseResource):
     def get(self, job_id):
