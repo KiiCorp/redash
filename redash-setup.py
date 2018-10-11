@@ -79,13 +79,13 @@ def bootstrap(name, email, password):
         models.db.session.add(default_group)
 
     # Check and create shared group.
-    shared_group_name = 'Shared'
-    query = models.Group.query.filter(models.Group.name == shared_group_name,
+    SHARED_GROUP_NAME = 'shared'
+    query = models.Group.query.filter(models.Group.name == SHARED_GROUP_NAME,
                                       models.Group.org == default_org)
     count = query.count()
     shared_group = None
     if count == 0:
-        shared_group = models.Group(name=shared_group_name,
+        shared_group = models.Group(name=SHARED_GROUP_NAME,
                                     permissions=['view_query', 'execute_query'],
                                     org=default_org,
                                     type=models.Group.REGULAR_GROUP)
@@ -101,6 +101,7 @@ def bootstrap(name, email, password):
                                            models.DataSource.org == default_org)
     count = query.count()
     if count == 0:
+        # Create a shared data source and assign it to admin and shared groups.
         shared_datasource = models.DataSource(org=default_org,
                                               name=shared_datasource_name,
                                               type='python',
