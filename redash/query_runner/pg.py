@@ -185,6 +185,41 @@ class PostgreSQL(BaseSQLQueryRunner):
 
         return json_data, error
 
+    def run_shared_query(self, query, params, user):
+        connection = self._get_connection()
+        _wait(connection, timeout=10)
+
+        cursor = connection.cursor()
+
+        try:
+            cursor.execute(query, params)
+            _wait(connection)
+
+            if cursor.description is not None:
+                columns = self.fetch_columns([(i[0], types_map.get(i[1], None)) for i in cursor.description])
+                rows = [dict(zip((c['name'] for c in columns), row)) for row in cursor]
+
+                data = {'columns': columns, 'rows': rows}
+                error = None
+                json_data = json.dumps(data, cls=JSONEncoder)
+            else:
+                error = 'Query completed but it returned no data.'
+                json_data = None
+        except (select.error, OSError) as e:
+            error = "Query interrupted. Please retry."
+            json_data = None
+        except psycopg2.DatabaseError as e:
+            error = e.message
+            json_data = None
+        except (KeyboardInterrupt, InterruptException):
+            connection.cancel()
+            error = "Query cancelled by user."
+            json_data = None
+        finally:
+            connection.close()
+
+        return json_data, error
+
     def run_query(self, query, user):
         connection = self._get_connection()
         _wait(connection, timeout=10)

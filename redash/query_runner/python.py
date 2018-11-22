@@ -12,6 +12,8 @@ from redash import models
 
 import importlib
 
+from inspect import ismethod
+
 logger = logging.getLogger(__name__)
 
 from RestrictedPython import compile_restricted
@@ -180,6 +182,66 @@ class Python(BaseQueryRunner):
         return False
 
     @staticmethod
+    def to_tenant_id_int(tenant_id):
+        if isinstance(tenant_id, int):
+            return tenant_id
+        elif isinstance(tenant_id, str):
+            return int(tenant_id)
+        elif isinstance(tenant_id, unicode):
+            return int(tenant_id)
+        else:
+            raise Exception("Wrong type of tenant id: %s." % type(tenant_id))
+
+    @staticmethod
+    def tenant_id2name(tenant_id):
+        """Convert tenant ID to table name.
+
+        Parameters:
+        :tenant_id: tenant ID
+        :return: table name
+        """
+
+        tid = Python.to_tenant_id_int(tenant_id)
+
+        return "tenant_%d" % tid
+
+    @staticmethod
+    def can_query_securely(data_source):
+        if not hasattr(data_source.query_runner, 'run_shared_query'):
+            return False
+        return ismethod(data_source.query_runner.run_shared_query)
+
+    @staticmethod
+    def execute_shared_query(tenant_id, query, user, parameters):
+        """Run shared query from for a tenant.
+
+        Parameters:
+        :tenant_id string: tenant ID
+        :query string: Query to run
+        :user models.User: user to execute query
+        :parameters array: parameter for query.
+        """
+
+        tid = Python.to_tenant_id_int(tenant_id)
+        data_source_name = "datasource_%d" % tid
+
+        try:
+            data_source = models.DataSource.get_by_name(data_source_name)
+        except models.NoResultFound:
+            raise Exception("Wrong data source name: %s." % data_source_name)
+
+        if not Python.can_query_securely(data_source):
+            raise Exception("data source is not secure: %s." % data_source_name)
+        if not Python.can_access(user, data_source):
+            raise Exception("Can't access data source name: %s." % data_source_name)
+        data, error = data_source.query_runner.run_shared_query(query, parameters, user)
+        if error is not None:
+            raise Exception(error)
+
+        # TODO: allow avoiding the json.dumps/loads in same process
+        return json.loads(data)
+
+    @staticmethod
     def execute_restricted_query(data_source_name, query, user):
         """Run query from specific data source.
 
@@ -302,6 +364,8 @@ class Python(BaseQueryRunner):
             restricted_globals["get_source_schema"] = self.get_source_schema
             restricted_globals["execute_query"] = self.execute_query
             restricted_globals["execute_restricted_query"] = lambda data_source_name, query: self.execute_restricted_query(data_source_name, query, user)
+            restricted_globals["execute_shared_query"] = lambda tenant_id, query: self.execute_shared_query(tenant_id, query, user, params)
+            restricted_globals["tenant_id2name"] = self.tenant_id2name
             restricted_globals["add_result_column"] = self.add_result_column
             restricted_globals["add_result_row"] = self.add_result_row
             restricted_globals["disable_print_log"] = self._custom_print.disable
