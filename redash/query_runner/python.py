@@ -231,7 +231,7 @@ class Python(BaseQueryRunner):
             raise Exception("Wrong data source name: %s." % data_source_name)
 
         if not Python.can_query_securely(data_source):
-            raise Exception("data source is not secure: %s." % data_source_name)
+            raise Exception("Data source is not secure: %s." % data_source_name)
         if not Python.can_access(user, data_source):
             raise Exception("Can't access data source name: %s." % data_source_name)
         data, error = data_source.query_runner.run_shared_query(query, parameters, user)
