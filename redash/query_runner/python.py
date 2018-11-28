@@ -216,7 +216,7 @@ class Python(BaseQueryRunner):
         """Run shared query from for a tenant.
 
         Parameters:
-        :tenant_id string: tenant ID
+        :tenant_id string or string: tenant ID
         :query string: Query to run
         :user models.User: user to execute query
         :parameters array: parameter for query.
