@@ -23,11 +23,12 @@ celery_schedule = {
     'cleanup_tasks': {
         'task': 'redash.tasks.cleanup_tasks',
         'schedule': timedelta(minutes=5)
-    },
-    'refresh_schemas': {
-        'task': 'redash.tasks.refresh_schemas',
-        'schedule': timedelta(minutes=settings.SCHEMAS_REFRESH_SCHEDULE)
     }
+    #,
+    # 'refresh_schemas': {
+    #     'task': 'redash.tasks.refresh_schemas',
+    #     'schedule': timedelta(minutes=settings.SCHEMAS_REFRESH_SCHEDULE)
+    # }
 }
 
 if settings.VERSION_CHECK:
