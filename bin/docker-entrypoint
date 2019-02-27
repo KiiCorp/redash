@@ -26,6 +26,14 @@ create_db() {
   exec /app/manage.py database create_tables
 }
 
+migrate() {
+    echo "Not implemented yet."
+}
+
+verify() {
+    echo "Not implemented yet."
+}
+
 help() {
   echo "Redash Docker."
   echo ""
@@ -84,6 +92,14 @@ case "$1" in
   tests)
     shift
     tests $@
+    ;;
+  migrate)
+    shift
+    migrate
+    ;;
+  verify)
+    shift
+    verify
     ;;
   help)
     shift
