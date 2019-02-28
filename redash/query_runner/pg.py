@@ -111,7 +111,13 @@ class PostgreSQL(BaseSQLQueryRunner):
         query = """
         SELECT table_schema, table_name, column_name
         FROM information_schema.columns
-        WHERE table_schema NOT IN ('pg_catalog', 'information_schema');
+        WHERE table_schema IN (
+            SELECT table_schema
+            FROM information_schema.table_privileges
+            WHERE grantee = (SELECT current_user)
+            AND table_schema NOT IN ('pg_catalog', 'information_schema')
+            GROUP BY table_schema
+        );
         """
 
         self._get_definitions(schema, query)
