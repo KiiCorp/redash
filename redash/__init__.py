@@ -20,7 +20,7 @@ from redash.destinations import import_destinations
 
 
 __version__ = '4.0.2'
-__varanus_redash_version__ = '0.24.0'
+
 
 def setup_logging():
     handler = logging.StreamHandler(sys.stdout if settings.LOG_STDOUT else sys.stderr)

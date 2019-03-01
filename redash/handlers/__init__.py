@@ -21,6 +21,6 @@ def status_api():
 
 
 def init_app(app):
-    from redash.handlers import embed, queries, static, authentication, admin, setup, organization
+    from redash.handlers import embed, queries, static, authentication, admin, setup, organization, varanus
     app.register_blueprint(routes)
     api.init_app(app)

@@ -4,7 +4,7 @@ import logging
 from flask import abort, flash, redirect, render_template, request, url_for
 
 from flask_login import current_user, login_required, login_user, logout_user
-from redash import __version__, __varanus_redash_version__, limiter, models, settings
+from redash import __version__, limiter, models, settings, varanus
 from redash.authentication import current_org, get_login_url
 from redash.authentication.account import (BadSignature, SignatureExpired,
                                            send_password_reset_email,
@@ -159,7 +159,7 @@ def client_config():
         client_config = {
             'newVersionAvailable': get_latest_version(),
             'version': __version__,
-            'varanus_redash_version': __varanus_redash_version__
+            'varanus_redash_version': varanus.version
         }
     else:
         client_config = {}
