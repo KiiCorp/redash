@@ -1,5 +1,5 @@
 import datetime
-import json
+import importlib
 import logging
 import sys
 import re
@@ -7,17 +7,15 @@ import re
 import pystache
 
 from redash.query_runner import *
-from redash.utils import json_dumps
+from redash.utils import json_dumps, json_loads
 from redash import models
+from RestrictedPython import compile_restricted
+from RestrictedPython.Guards import safe_builtins
 
-import importlib
 
 from inspect import ismethod
 
 logger = logging.getLogger(__name__)
-
-from RestrictedPython import compile_restricted
-from RestrictedPython.Guards import safe_builtins
 
 
 class CustomPrint(object):
@@ -286,8 +284,8 @@ class Python(BaseQueryRunner):
         if error is not None:
             raise Exception(error)
 
-        # TODO: allow avoiding the json.dumps/loads in same process
-        return json.loads(data)
+        # TODO: allow avoiding the JSON dumps/loads in same process
+        return json_loads(data)
 
     @staticmethod
     def get_source_schema(data_source_name_or_id):
@@ -324,7 +322,10 @@ class Python(BaseQueryRunner):
         if query.latest_query_data.data is None:
             raise Exception("Query does not have results yet.")
 
-        return json.loads(query.latest_query_data.data)
+        return json_loads(query.latest_query_data.data)
+
+    def get_current_user(self):
+        return self._current_user.to_dict()
 
     def test_connection(self):
         pass
@@ -401,6 +402,8 @@ class Python(BaseQueryRunner):
         return json_data, error
 
     def run_query(self, query, user):
+        self._current_user = user
+
         try:
             error = None
 
@@ -425,6 +428,7 @@ class Python(BaseQueryRunner):
             restricted_globals = dict(__builtins__=builtins)
             restricted_globals["get_query_result"] = self.get_query_result
             restricted_globals["get_source_schema"] = self.get_source_schema
+            restricted_globals["get_current_user"] = self.get_current_user
             restricted_globals["execute_query"] = self.execute_query
             restricted_globals["execute_restricted_query"] = lambda data_source_name, query: self.execute_restricted_query(data_source_name, query, user)
             restricted_globals["add_result_column"] = self.add_result_column
