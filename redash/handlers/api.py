@@ -6,12 +6,12 @@ from redash.utils import json_dumps
 from redash.handlers.base import org_scoped_rule
 from redash.handlers.permissions import ObjectPermissionsListResource, CheckPermissionResource
 from redash.handlers.alerts import AlertResource, AlertListResource, AlertSubscriptionListResource, AlertSubscriptionResource
-from redash.handlers.dashboards import DashboardListResource, RecentDashboardsResource, DashboardResource, DashboardShareResource, DashboardUserResource, PublicDashboardResource 
+from redash.handlers.dashboards import DashboardListResource, DashboardResource, DashboardShareResource, PublicDashboardResource 
 from redash.handlers.data_sources import DataSourceTypeListResource, DataSourceListResource, DataSourceSchemaResource, DataSourceResource, DataSourcePauseResource, DataSourceTestResource
 from redash.handlers.events import EventsResource
 from redash.handlers.queries import QueryForkResource, QueryRefreshResource, QueryListResource, QueryRecentResource, QuerySearchResource, QueryResource, MyQueriesResource
 from redash.handlers.query_results import QueryResultListResource, QueryResultResource, JobResource
-from redash.handlers.users import UserResource, UserListResource, UserInviteResource, UserResetPasswordResource, UserCreateResource, UserForcibleGetResource
+from redash.handlers.users import UserResource, UserListResource, UserInviteResource, UserResetPasswordResource, UserDisableResource
 from redash.handlers.visualizations import VisualizationListResource
 from redash.handlers.visualizations import VisualizationResource
 from redash.handlers.widgets import WidgetResource, WidgetListResource
@@ -20,7 +20,12 @@ from redash.handlers.groups import GroupListResource, GroupResource, GroupMember
 from redash.handlers.destinations import DestinationTypeListResource, DestinationResource, DestinationListResource
 from redash.handlers.query_snippets import QuerySnippetListResource, QuerySnippetResource
 from redash.handlers.settings import OrganizationSettings
+from redash.handlers.favorites import QueryFavoriteListResource, QueryFavoriteResource, DashboardFavoriteListResource, DashboardFavoriteResource
+from redash.handlers.queries import QueryTagsResource
+from redash.handlers.dashboards import DashboardTagsResource
 
+from redash.handlers.dashboards import DashboardUserResource
+from redash.handlers.users import UserCreateResource, UserForcibleGetResource
 
 class ApiExt(Api):
     def add_org_resource(self, resource, *urls, **kwargs):
@@ -46,11 +51,9 @@ api.add_org_resource(AlertSubscriptionResource, '/api/alerts/<alert_id>/subscrip
 api.add_org_resource(AlertListResource, '/api/alerts', endpoint='alerts')
 
 api.add_org_resource(DashboardListResource, '/api/dashboards', endpoint='dashboards')
-api.add_org_resource(RecentDashboardsResource, '/api/dashboards/recent', endpoint='recent_dashboards')
 api.add_org_resource(DashboardResource, '/api/dashboards/<dashboard_slug>', endpoint='dashboard')
 api.add_org_resource(PublicDashboardResource, '/api/dashboards/public/<token>', endpoint='public_dashboard')
 api.add_org_resource(DashboardShareResource, '/api/dashboards/<dashboard_id>/share', endpoint='dashboard_share')
-api.add_org_resource(DashboardUserResource, '/api/dashboards/user/<user_id>', endpoint='dashboard_user_id')
 
 api.add_org_resource(DataSourceTypeListResource, '/api/data_sources/types', endpoint='data_source_types')
 api.add_org_resource(DataSourceListResource, '/api/data_sources', endpoint='data_sources')
@@ -68,6 +71,14 @@ api.add_org_resource(GroupDataSourceListResource, '/api/groups/<group_id>/data_s
 api.add_org_resource(GroupDataSourceResource, '/api/groups/<group_id>/data_sources/<data_source_id>', endpoint='group_data_source')
 
 api.add_org_resource(EventsResource, '/api/events', endpoint='events')
+
+api.add_org_resource(QueryFavoriteListResource, '/api/queries/favorites', endpoint='query_fovorites')
+api.add_org_resource(QueryFavoriteResource, '/api/queries/<query_id>/favorite', endpoint='query_fovorite')
+api.add_org_resource(DashboardFavoriteListResource, '/api/dashboards/favorites', endpoint='dashboard_fovorites')
+api.add_org_resource(DashboardFavoriteResource, '/api/dashboards/<object_id>/favorite', endpoint='dashboard_fovorite')
+
+api.add_org_resource(QueryTagsResource, '/api/queries/tags', endpoint='query_tags')
+api.add_org_resource(DashboardTagsResource, '/api/dashboards/tags', endpoint='dashboard_tags')
 
 api.add_org_resource(QuerySearchResource, '/api/queries/search', endpoint='queries_search')
 api.add_org_resource(QueryRecentResource, '/api/queries/recent', endpoint='recent_queries')
@@ -93,8 +104,7 @@ api.add_org_resource(UserListResource, '/api/users', endpoint='users')
 api.add_org_resource(UserResource, '/api/users/<user_id>', endpoint='user')
 api.add_org_resource(UserInviteResource, '/api/users/<user_id>/invite', endpoint='user_invite')
 api.add_org_resource(UserResetPasswordResource, '/api/users/<user_id>/reset_password', endpoint='user_reset_password')
-api.add_org_resource(UserCreateResource, '/api/users/create', endpoint='users_create')
-api.add_org_resource(UserForcibleGetResource , '/api/users/forcible', endpoint='users_forcible')
+api.add_org_resource(UserDisableResource, '/api/users/<user_id>/disable', endpoint='user_disable')
 
 api.add_org_resource(VisualizationListResource, '/api/visualizations', endpoint='visualizations')
 api.add_org_resource(VisualizationResource, '/api/visualizations/<visualization_id>', endpoint='visualization')
@@ -110,3 +120,8 @@ api.add_org_resource(QuerySnippetResource, '/api/query_snippets/<snippet_id>', e
 api.add_org_resource(QuerySnippetListResource, '/api/query_snippets', endpoint='query_snippets')
 
 api.add_org_resource(OrganizationSettings, '/api/settings/organization', endpoint='organization_settings')
+
+
+api.add_org_resource(DashboardUserResource, '/api/dashboards/user/<user_id>', endpoint='dashboard_user_id')
+api.add_org_resource(UserCreateResource, '/api/users/create', endpoint='users_create')
+api.add_org_resource(UserForcibleGetResource , '/api/users/forcible', endpoint='users_forcible')
