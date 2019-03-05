@@ -57,3 +57,4 @@ disposable-email-domains
 
 requests-oauthlib==1.0.0
 oauthlib==2.1.0
+kombu==4.2.2.post1
