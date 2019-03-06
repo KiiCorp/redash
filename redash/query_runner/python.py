@@ -237,7 +237,7 @@ class Python(BaseQueryRunner):
             raise Exception(error)
 
         # TODO: allow avoiding the json.dumps/loads in same process
-        return json.loads(data)
+        return json_loads(data)
 
     @staticmethod
     def execute_restricted_query(data_source_name, query, user):
@@ -261,7 +261,7 @@ class Python(BaseQueryRunner):
             raise Exception(error)
 
         # TODO: allow avoiding the json.dumps/loads in same process
-        return json.loads(data)
+        return json_loads(data)
 
     @staticmethod
     def execute_query(data_source_name_or_id, query):

@@ -178,7 +178,7 @@ class PostgreSQL(BaseSQLQueryRunner):
 
                 data = {'columns': columns, 'rows': rows}
                 error = None
-                json_data = json.dumps(data, cls=JSONEncoder)
+                json_data = json_dumps(data)
             else:
                 error = 'Query completed but it returned no data.'
                 json_data = None
@@ -213,7 +213,7 @@ class PostgreSQL(BaseSQLQueryRunner):
 
                 data = {'columns': columns, 'rows': rows}
                 error = None
-                json_data = json.dumps(data, cls=JSONEncoder)
+                json_data = json_dumps(data)
             else:
                 error = 'Query completed but it returned no data.'
                 json_data = None
