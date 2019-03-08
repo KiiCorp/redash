@@ -27,7 +27,7 @@ create_db() {
 }
 
 migrate() {
-  exec /app/redash-migrate.py
+  exec /app/redash-migrate.py migrate
 }
 
 verify() {
