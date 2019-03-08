@@ -20,7 +20,7 @@ memsql==2.16.0
 atsd_client==2.0.12
 simple_salesforce==0.72.2
 PyAthena>=1.0.0
-pymapd>=0.2.1
+#pymapd>=0.2.1
 qds-sdk>=1.9.6
 # certifi is needed to support MongoDB and SSL:
 certifi
@@ -28,3 +28,5 @@ certifi
 # other packages. To properly support it we probably need to switch from pyOpenSSL
 # to the other package snowflake is using (that's compatible with it).
 # snowflake_connector_python==1.3.16
+
+pymapd==0.7.1
