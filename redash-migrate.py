@@ -26,6 +26,8 @@ logger = logging.getLogger('redash migrate')
 
 ORG_NAME = 'Development'
 ORG_SLUG = 'default'
+SHARED_GROUP_NAME = 'shared'
+SHARED_DATASOURCE_NAME = 'Shared Data Source'
 
 
 # setup application and db.
@@ -81,18 +83,18 @@ def get_default_org():
     return default_org
 
 
-def create_db():
-    db = get_db()
-
-    results = db.engine.execute("""
+def count_alembic_version_table():
+    return get_db().engine.execute("""
     SELECT count(table_name) FROM information_schema.tables
     WHERE table_name = 'alembic_version';
-    """)
+    """).first()[0]
 
-    count = results.first()[0]
+
+def create_db_migrate():
+    count = count_alembic_version_table()
     if count == 0:
         logger.info('create redash tables.')
-        db.create_all()
+        get_db().create_all()
     elif count == 1:
         logger.info('redash tables already exist.')
     elif count != 1:
@@ -100,8 +102,7 @@ def create_db():
         logger.error('unexpected number of alembic_version table: %d' % (count))
         return False
 
-    context = get_migration_context()
-    if context.get_current_revision() == None:
+    if get_migration_context().get_current_revision() == None:
         # Need to mark current DB as up to date
         with current_app.app_context():
             stamp()
@@ -111,7 +112,27 @@ def create_db():
     return True
 
 
-def upgrade_db():
+def create_db_verify():
+    count = count_alembic_version_table()
+    if count == 0:
+        logger.error('redash table does not exists.')
+        return False
+    elif count == 1:
+        logger.info('redash tables already exist.')
+    elif count != 1:
+        # this case must not be happened.
+        logger.error('unexpected number of alembic_version table: %d' % (count))
+        return False
+
+    if get_migration_context().get_current_revision() == None:
+        logger.error('revision is not stamped')
+        return False
+    else:
+        logger.info('revision is already stamped.')
+    return True
+
+
+def is_latest_revision():
     script = ScriptDirectory.from_config(current_app.extensions['migrate'].migrate.get_config(None))
     context = get_migration_context()
 
@@ -119,14 +140,24 @@ def upgrade_db():
     head = script.get_current_head()
     if head == current:
         logger.info('db is already latest version: %s' % (head))
+        return True
     else:
         logger.info('db will be upgraded to rev %s' % (head))
+        return False
+
+
+def upgrade_db_migrate():
+    if not is_latest_revision():
         with current_app.app_context():
             upgrade()
     return True
 
 
-def setup_org():
+def upgrade_db_verify():
+    return is_latest_revision()
+
+
+def setup_org_migrate():
     db = get_db()
 
     # Chech and create primary organization.
@@ -166,8 +197,32 @@ def setup_org():
     db.session.commit()
     return True
 
+def setup_org_verify():
+    # Chech primary organization.
+    default_org = get_default_org()
+    if default_org is None:
+        logger.error('primary organization not found')
+        return False
+    else:
+        logger.info('primary organization is already exists.')
 
-def setup_shared_ds():
+    # Check admin group.
+    if default_org.admin_group is None:
+        logger.error('admin group not found')
+        return False
+    else:
+        logger.info('admin group is already exists.')
+
+    # Check default group.
+    if default_org.default_group is None:
+        logger.error('default group not found')
+        return False
+    else:
+        logger.info('default group is already exists.')
+    return True
+
+
+def setup_shared_ds_migrate():
     db = get_db()
 
     default_org = get_default_org()
@@ -176,7 +231,6 @@ def setup_shared_ds():
         return False
 
     # Check and create shared group.
-    SHARED_GROUP_NAME = 'shared'
     query = models.Group.query.filter(models.Group.name == SHARED_GROUP_NAME,
                                       models.Group.org == default_org)
     count = query.count()
@@ -195,7 +249,6 @@ def setup_shared_ds():
         return False
 
     # Check and create shared data source.
-    SHARED_DATASOURCE_NAME = 'Shared Data Source'
     query = models.DataSource.query.filter(models.DataSource.name == SHARED_DATASOURCE_NAME,
                                            models.DataSource.org == default_org)
     count = query.count()
@@ -224,18 +277,64 @@ def setup_shared_ds():
     return True
 
 
-def setup_admin():
+def setup_shared_ds_verify():
+    default_org = get_default_org()
+    if default_org == None:
+        logger.error('shared datasource requires default org but not found.')
+        return False
+
+    # Check and create shared group.
+    count = models.Group.query.filter(models.Group.name == SHARED_GROUP_NAME,
+                                      models.Group.org == default_org).count()
+    if count == 0:
+        logger.error('shared group not found.')
+        return False
+    elif count == 1:
+        logger.info('shared group is already exists.')
+    else:
+        logger.error('more than one shared group exists')
+        return False
+
+    # Check and create shared data source.
+    count = models.DataSource.query.filter(models.DataSource.name == SHARED_DATASOURCE_NAME,
+                                           models.DataSource.org == default_org).count()
+    if count == 0:
+        logger.error('shared data source not found')
+        return False
+    elif count == 1:
+        logger.info('shared datasource is already exists.')
+    else:
+        logger.error('more than one shared data source exists: %d' % (count))
+        return False
+
+    return True
+
+
+class admin_info:
+    def __init__(self, name, email, password):
+        self.name = name
+        self.email = email
+        self.password = password
+
+def get_admin_info():
     name = os.environ.get("ADMIN_NAME")
     email = os.environ.get("ADMIN_EMAIL")
     password = os.environ.get("ADMIN_PASSWORD")
     if name == None:
         logger.error('environment variable "ADMIN_NAME" required.')
-        return False
+        return None
     if email == None:
         logger.error('environment variable "ADMIN_EMAIL" required.')
-        return False
+        return None
     if password == None:
         logger.error('environment variable "ADMIN_PASSWORD" required.')
+        return None
+    return admin_info(name, email, password)
+
+
+def setup_admin_migrate():
+    admin = get_admin_info()
+    if admin == None:
         return False
 
     db = get_db()
@@ -245,12 +344,12 @@ def setup_admin():
         return False
 
     # Check and create an administrator for development.
-    count = models.User.query.filter(models.User.email == email, models.User.org == default_org).count()
+    count = models.User.query.filter(models.User.email == admin.email, models.User.org == default_org).count()
     if count == 0:
         logger.info('create admin.')
-        user = models.User(org=default_org, name=name, email=email,
+        user = models.User(org=default_org, name=admin.name, email=admin.email,
                            group_ids=[default_org.admin_group.id, default_org.default_group.id])
-        user.hash_password(password)
+        user.hash_password(admin.password)
         db.session.add(user)
     elif count == 1:
         logger.info('admin already exists.')
@@ -261,17 +360,42 @@ def setup_admin():
     return True
 
 
+def setup_admin_verify():
+    admin = get_admin_info()
+    if admin == None:
+        return False
+
+    default_org = get_default_org()
+    if default_org == None:
+        logger.error('shared datasource requires default org but not found.')
+        return False
+
+    # Check and create an administrator for development.
+    count = models.User.query.filter(models.User.email == admin.email, models.User.org == default_org).count()
+    if count == 0:
+        logger.error('admin not found')
+        return False
+    elif count == 1:
+        logger.info('admin already exists.')
+    else:
+        logger.error('more than one admin exists: %d' % (c))
+        return False
+    return True
+
+
 class migration:
-    def __init__(self, id, migrater):
+    def __init__(self, id, migrater, verifier):
         self.id = id
         self.migrater = migrater
+        self.verifier = verifier
+
 
 migrations = (
-    migration('db.create', create_db),
-    migration('db.upgrade', upgrade_db),
-    migration('db.setup.org', setup_org),
-    migration('db.setup.shared_ds', setup_shared_ds),
-    migration('db.setup.admin', setup_admin),
+    migration('db.create', create_db_migrate, create_db_verify),
+    migration('db.upgrade', upgrade_db_migrate, upgrade_db_verify),
+    migration('db.setup.org', setup_org_migrate, setup_org_verify),
+    migration('db.setup.shared_ds', setup_shared_ds_migrate, setup_shared_ds_verify),
+    migration('db.setup.admin', setup_admin_migrate, setup_admin_verify),
 )
 
 @cli.command()
@@ -284,6 +408,20 @@ def migrate():
         except Exception as e:
             logger.error('%s failed. reason: %s', m.id, e)
             return False
+    return True
+
+@cli.command()
+def verify():
+    for m in migrations:
+        try:
+            ok = m.verifier()
+            if not ok:
+                return False
+        except Exception as e:
+            logger.error('%s failed. reason: %s', m.id, e)
+            return False
+    return True
+
 
 if __name__ == '__main__':
     cli()

@@ -31,7 +31,7 @@ migrate() {
 }
 
 verify() {
-    echo "Not implemented yet."
+  exec /app/redash-migrate.py verify
 }
 
 help() {
