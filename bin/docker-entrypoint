@@ -27,11 +27,11 @@ create_db() {
 }
 
 migrate() {
-    echo "Not implemented yet."
+  exec /app/redash-migrate.py migrate
 }
 
 verify() {
-    echo "Not implemented yet."
+  exec /app/redash-migrate.py verify
 }
 
 help() {

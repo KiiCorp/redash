@@ -19,7 +19,6 @@ from redash.destinations import import_destinations
 
 
 __version__ = '6.0.0'
-__varanus_redash_version__ = '0.24.0'
 
 
 def setup_logging():
