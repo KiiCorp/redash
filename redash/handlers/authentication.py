@@ -13,8 +13,6 @@ from redash.handlers.base import json_response, org_scoped_rule
 from redash.version_check import get_latest_version
 from sqlalchemy.orm.exc import NoResultFound
 
-from redash import __varanus_redash_version__
-
 logger = logging.getLogger(__name__)
 
 
