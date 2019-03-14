@@ -273,15 +273,15 @@ def setup_shared_ds_verify():
 
 
 def setup_admin_migrate():
-    name = os.environ.get("ADMIN_NAME")
-    email = os.environ.get("ADMIN_EMAIL")
-    password = os.environ.get("ADMIN_PASSWORD")
+    name = os.environ.get("VARANAUS_REDASH_ADMIN_NAME")
+    email = os.environ.get("VARANUS_REDASH_ADMIN_EMAIL")
+    password = os.environ.get("VARANUS_REDASH_ADMIN_PASSWORD")
     if name == None:
-        raise Exception('environment variable "ADMIN_NAME" required.')
+        raise Exception('environment variable "VARANAUS_REDASH_ADMIN_NAME" required.')
     if email == None:
-        raise Exception('environment variable "ADMIN_EMAIL" required.')
+        raise Exception('environment variable "VARANUS_REDASH_ADMIN_EMAIL" required.')
     if password == None:
-        raise Exception('environment variable "ADMIN_PASSWORD" required.')
+        raise Exception('environment variable "VARANUS_REDASH_ADMIN_PASSWORD" required.')
 
     db = models.db
     default_org = get_default_org()
@@ -304,9 +304,9 @@ def setup_admin_migrate():
 
 
 def setup_admin_verify():
-    email = os.environ.get("ADMIN_EMAIL")
+    email = os.environ.get("VARANUS_REDASH_ADMIN_EMAIL")
     if email == None:
-        raise Exception('environment variable "ADMIN_EMAIL" required.')
+        raise Exception('environment variable "VARANUS_REDASH_ADMIN_EMAIL" required.')
 
     default_org = get_default_org()
     if default_org == None:
