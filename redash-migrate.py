@@ -269,15 +269,13 @@ def setup_shared_ds_verify():
     else:
         raise Exception('more than one shared data source exists: %d' % (count))
 
-    return True
-
 
 def setup_admin_migrate():
-    name = os.environ.get("VARANAUS_REDASH_ADMIN_NAME")
+    name = os.environ.get("VARANUS_REDASH_ADMIN_NAME")
     email = os.environ.get("VARANUS_REDASH_ADMIN_EMAIL")
     password = os.environ.get("VARANUS_REDASH_ADMIN_PASSWORD")
     if name == None:
-        raise Exception('environment variable "VARANAUS_REDASH_ADMIN_NAME" required.')
+        raise Exception('environment variable "VARANUS_REDASH_ADMIN_NAME" required.')
     if email == None:
         raise Exception('environment variable "VARANUS_REDASH_ADMIN_EMAIL" required.')
     if password == None:
@@ -315,8 +313,7 @@ def setup_admin_verify():
     # Check and create an administrator for development.
     count = models.User.query.filter(models.User.email == email, models.User.org == default_org).count()
     if count == 0:
-        logger.error('admin not found')
-        return False
+        raise Exception('admin not found')
     elif count == 1:
         logger.info('admin already exists.')
     else:
