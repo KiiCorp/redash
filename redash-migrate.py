@@ -18,16 +18,34 @@ from flask_migrate import stamp, upgrade
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.exc import SQLAlchemyError
 
-from redash import create_app
-from redash import models
+from redash import create_app, models, settings
 
-# logger = logging.getLogger('redash migrate')
 logger = logging.getLogger(__name__)
 
 ORG_NAME = 'Development'
 ORG_SLUG = 'default'
 SHARED_GROUP_NAME = 'shared'
 SHARED_DATASOURCE_NAME = 'Shared Data Source'
+
+def reset_logging():
+    logging.config.dictConfig({
+        "version": 1,
+        "formatters": {
+            "f1": {
+                "format": settings.LOG_FORMAT,
+            },
+        },
+        "handlers": {
+            "h1": {
+                "class": "logging.StreamHandler",
+                "level": settings.LOG_LEVEL,
+                "formatter": "f1",
+            }
+        },
+        "root": {
+            "level": settings.LOG_LEVEL,
+            "handlers": ["h1"]
+        }})
 
 
 # setup application and db.
@@ -87,6 +105,8 @@ def create_db_migrate():
         # Need to mark current DB as up to date
         with current_app.app_context():
             stamp()
+            # stamp() changes logging configuration. To display logs, reset logging configuration.
+            reset_logging()
     else:
         logger.info('revision is already stamped.')
 
@@ -122,6 +142,8 @@ def upgrade_db_migrate():
         logger.info('db will be upgraded to rev %s' % (head))
         with current_app.app_context():
             upgrade()
+            # upgrade() changes logging configuration. To display logs, reset logging configuration.
+            reset_logging()
 
 
 def upgrade_db_verify():
