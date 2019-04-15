@@ -314,7 +314,7 @@ def setup_admin_migrate():
     count = models.User.query.filter(models.User.email == email, models.User.org == default_org).count()
     if count == 0:
         logger.info('create admin.')
-        user = models.User(org=default_org, name=name, email=email,
+        user = models.User(org=default_org, name=name, email=unicode(email),
                            group_ids=[default_org.admin_group.id, default_org.default_group.id])
         user.hash_password(password)
         db.session.add(user)
