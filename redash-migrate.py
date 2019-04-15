@@ -28,6 +28,7 @@ SHARED_GROUP_NAME = 'shared'
 SHARED_DATASOURCE_NAME = 'Shared Data Source'
 
 def reset_logging():
+    output = "ext://sys.stdout" if settings.LOG_STDOUT else "ext://sys.stderr"
     logging.config.dictConfig({
         "version": 1,
         "formatters": {
@@ -40,6 +41,7 @@ def reset_logging():
                 "class": "logging.StreamHandler",
                 "level": settings.LOG_LEVEL,
                 "formatter": "f1",
+                "stream": output,
             }
         },
         "root": {
