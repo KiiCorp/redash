@@ -14,6 +14,8 @@ from redash.tasks.alerts import check_alerts_for_query
 from redash.utils import gen_query_hash, json_dumps, json_loads, utcnow, mustache_render
 from redash.worker import celery
 
+from redash.varanus import can_query_securely
+
 logger = get_task_logger(__name__)
 
 
@@ -204,7 +206,7 @@ class QueryTask(object):
         return self._async_result.revoke(terminate=True, signal='SIGINT')
 
 
-def enqueue_query(query, data_source, user_id, scheduled_query=None, metadata={}):
+def enqueue_query(query, data_source, user_id, scheduled_query=None, metadata={}, raw_query_text=None, query_params=None):
     query_hash = gen_query_hash(query)
     logging.info("Inserting job for %s with metadata=%s", query_hash, metadata)
     try_count = 0
@@ -240,7 +242,7 @@ def enqueue_query(query, data_source, user_id, scheduled_query=None, metadata={}
                     scheduled_query_id = None
                     time_limit = settings.ADHOC_QUERY_TIME_LIMIT
 
-                result = execute_query.apply_async(args=(query, data_source.id, metadata, user_id, scheduled_query_id),
+                result = execute_query.apply_async(args=(query, data_source.id, metadata, user_id, scheduled_query_id, raw_query_text, query_params),
                                                    queue=queue_name,
                                                    time_limit=time_limit)
                 job = QueryTask(async_result=result)
@@ -290,7 +292,8 @@ def refresh_queries():
 
                 enqueue_query(query_text, query.data_source, query.user_id,
                               scheduled_query=query,
-                              metadata={'Query ID': query.id, 'Username': 'Scheduled'})
+                              metadata={'Query ID': query.id, 'Username': 'Scheduled'},
+                              raw_query_text=query.query_text, query_params=query_params)
 
                 query_ids.append(query.id)
                 outdated_queries_count += 1
@@ -411,12 +414,16 @@ class QueryExecutionError(Exception):
 # issues as the task class created once per process, so decided to have a plain object instead.
 class QueryExecutor(object):
     def __init__(self, task, query, data_source_id, user_id, metadata,
-                 scheduled_query):
+                 scheduled_query,
+                 raw_query_text=None,
+                 query_params=None):
         self.task = task
         self.query = query
         self.data_source_id = data_source_id
         self.metadata = metadata
         self.data_source = self._load_data_source()
+        self.raw_query_text = raw_query_text
+        self.query_params = query_params
         if user_id is not None:
             self.user = models.User.query.get(user_id)
         else:
@@ -451,7 +458,10 @@ class QueryExecutor(object):
         annotated_query = self._annotate_query(query_runner)
 
         try:
-            data, error = query_runner.run_query(annotated_query, self.user)
+            if can_query_securely(self.data_source):
+                data, error = query_runner.run_secure_query(self.raw_query_text, self.query_params, self.user)
+            else:
+                data, error = query_runner.run_query(annotated_query, self.user)
         except Exception as e:
             error = text_type(e)
             data = None
@@ -524,10 +534,14 @@ class QueryExecutor(object):
 # jobs before the upgrade to this version.
 @celery.task(name="redash.tasks.execute_query", bind=True, track_started=True)
 def execute_query(self, query, data_source_id, metadata, user_id=None,
-                  scheduled_query_id=None):
+                  scheduled_query_id=None,
+                  raw_query_text=None,
+                  query_params=None):
     if scheduled_query_id is not None:
         scheduled_query = models.Query.query.get(scheduled_query_id)
     else:
         scheduled_query = None
     return QueryExecutor(self, query, data_source_id, user_id, metadata,
-                         scheduled_query).run()
+                         scheduled_query,
+                         raw_query_text=raw_query_text,
+                         query_params=query_params).run()

@@ -2,8 +2,6 @@ import logging
 import time
 
 
-from inspect import ismethod
-
 import pystache
 
 
@@ -22,10 +20,7 @@ from redash.utils import (collect_query_parameters,
                           mustache_render)
 from redash.tasks.queries import enqueue_query
 
-def can_query_securely(data_source):
-    if not hasattr(data_source.query_runner, 'run_secure_query'):
-        return False
-    return ismethod(data_source.query_runner.run_secure_query)
+from redash.varanus import can_query_securely
 
 def error_response(message):
     return {'job': {'status': 4, 'error': message}}, 400
@@ -89,6 +84,7 @@ def run_query(data_source, parameter_values, query_text, query_id, max_age=0):
     missing_params = set(query_parameters) - set(parameter_values.keys())
     if missing_params:
         return error_response('Missing parameter value for: {}'.format(", ".join(missing_params)))
+    raw_query_text = query_text
 
     if data_source.paused:
         if data_source.pause_reason:
@@ -109,7 +105,7 @@ def run_query(data_source, parameter_values, query_text, query_id, max_age=0):
     if query_result:
         return {'query_result': query_result.to_dict()}
     else:
-        job = enqueue_query(query_text, data_source, current_user.id, metadata={"Username": current_user.email, "Query ID": query_id})
+        job = enqueue_query(query_text, data_source, current_user.id, metadata={"Username": current_user.email, "Query ID": query_id}, raw_query_text=raw_query_text, query_params=parameter_values)
         return {'job': job.to_dict()}
 
 
