@@ -431,8 +431,6 @@ class Python(BaseQueryRunner):
             restricted_globals["get_current_user"] = self.get_current_user
             restricted_globals["execute_query"] = self.execute_query
             restricted_globals["execute_restricted_query"] = lambda data_source_name, query: self.execute_restricted_query(data_source_name, query, user)
-            restricted_globals["execute_shared_query"] = lambda tenant_id, query: self.execute_shared_query(tenant_id, query, user, None)
-            restricted_globals["tenant_id2name"] = self.tenant_id2name
             restricted_globals["add_result_column"] = self.add_result_column
             restricted_globals["add_result_row"] = self.add_result_row
             restricted_globals["disable_print_log"] = self._custom_print.disable
