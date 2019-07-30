@@ -21,6 +21,7 @@ from redash.utils import (collect_query_parameters,
 from redash.tasks.queries import enqueue_query
 
 from redash.varanus import can_query_securely
+from redash.varanus import varanus_render
 
 def error_response(message):
     return {'job': {'status': 4, 'error': message}}, 400
@@ -40,7 +41,7 @@ def run_query_sync(data_source, parameter_values, query_text, max_age=0):
     original_query_text = query_text
 
     if query_parameters:
-        query_text = mustache_render(query_text, parameter_values)
+        query_text = varanus_render(query_text, parameter_values)
 
     if max_age <= 0:
         query_result = None
@@ -95,7 +96,7 @@ def run_query(data_source, parameter_values, query_text, query_id, max_age=0):
         return error_response(message)
 
     if query_parameters:
-        query_text = mustache_render(query_text, parameter_values)
+        query_text = varanus_render(query_text, parameter_values)
 
     if max_age == 0:
         query_result = None
