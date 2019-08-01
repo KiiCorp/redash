@@ -2,6 +2,7 @@ import time
 import chromelogger
 from flask import g, request
 from flask_sqlalchemy import get_debug_queries
+from redash import varanus
 
 
 def log_queries():
@@ -50,5 +51,8 @@ def chrome_log(response):
 def init_app(app):
     if not app.debug:
         return 
+
+    if not varanus.CHROMELOGGER_ENABLED:
+        return
 
     app.after_request(chrome_log)
