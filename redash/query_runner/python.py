@@ -14,6 +14,7 @@ from RestrictedPython.Guards import safe_builtins
 
 
 from inspect import ismethod
+from redash import varanus
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,8 @@ class Python(BaseQueryRunner):
 
         tid = Python.to_tenant_id_int(tenant_id)
 
+        if varanus.DBOBJ_PREFIX != '':
+            return "%s_tenant_%d" % (varanus.DBOBJ_PREFIX, tid,)
         return "tenant_%d" % tid
 
     @staticmethod
