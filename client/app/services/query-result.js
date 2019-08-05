@@ -556,6 +556,34 @@ function QueryResultService($resource, $timeout, $q, QueryResultError) {
 
       return queryResult;
     }
+
+    static get2(dataSourceId, query, maxAge, queryId, queryParams) {
+      const qp = {};
+      Object.keys(queryParams).forEach((key) => { qp['p_' + key] = queryParams[key]; });
+      const queryResultListResource = $resource('api/query_results/', qp, { post: { method: 'POST' } });
+      const queryResult = new QueryResult();
+
+      const params = { data_source_id: dataSourceId, query, max_age: maxAge };
+      if (queryId !== undefined) {
+        params.query_id = queryId;
+      }
+
+      queryResultListResource.post(
+        params,
+        (response) => {
+          queryResult.update(response);
+
+          if ('job' in response) {
+            queryResult.refreshStatus(query);
+          }
+        },
+        (error) => {
+          handleErrorResponse(queryResult, error);
+        },
+      );
+
+      return queryResult;
+    }
   }
 
   return QueryResult;
