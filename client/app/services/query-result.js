@@ -532,32 +532,7 @@ function QueryResultService($resource, $timeout, $q, QueryResultError) {
       return `${queryName.replace(/ /g, '_') + moment(this.getUpdatedAt()).format('_YYYY_MM_DD')}.${fileType}`;
     }
 
-    static get(dataSourceId, query, maxAge, queryId) {
-      const queryResult = new QueryResult();
-
-      const params = { data_source_id: dataSourceId, query, max_age: maxAge };
-      if (queryId !== undefined) {
-        params.query_id = queryId;
-      }
-
-      QueryResultResource.post(
-        params,
-        (response) => {
-          queryResult.update(response);
-
-          if ('job' in response) {
-            queryResult.refreshStatus(query);
-          }
-        },
-        (error) => {
-          handleErrorResponse(queryResult, error);
-        },
-      );
-
-      return queryResult;
-    }
-
-    static get2(dataSourceId, query, maxAge, queryId, queryParams) {
+    static get(dataSourceId, query, maxAge, queryId, queryParams) {
       const qp = {};
       Object.keys(queryParams).forEach((key) => { qp['p_' + key] = queryParams[key]; });
       const queryResultListResource = $resource('api/query_results/', qp, { post: { method: 'POST' } });
