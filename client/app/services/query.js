@@ -183,8 +183,11 @@ class Parameters {
   parseQuery() {
     let parameters = [];
     try {
+      Mustache.clearCache();
       const parts = Mustache.parse(this.query.query);
-      parameters = uniq(collectParams(parts));
+      Mustache.clearCache();
+      const parts2 = Mustache.parse(this.query.query, ['%(', ')s']);
+      parameters = uniq(collectParams(parts.concat(parts2)));
     } catch (e) {
       logger('Failed parsing parameters: ', e);
       // Return current parameters so we don't reset the list
