@@ -1,6 +1,6 @@
 import moment from 'moment';
 import debug from 'debug';
-import Mustache from 'mustache';
+import Mustache, { Writer } from 'mustache';
 import {
   each, zipObject, isEmpty, map, filter, includes, union, uniq, has,
   isNull, isUndefined, isArray, isObject, identity,
@@ -178,15 +178,16 @@ class Parameters {
     this.query = query;
     this.updateParameters();
     this.initFromQueryString(queryString);
+    this.mustacheWriter = new Writer();
   }
 
   parseQuery() {
     let parameters = [];
     try {
-      Mustache.clearCache();
       const parts = Mustache.parse(this.query.query);
-      Mustache.clearCache();
-      const parts2 = Mustache.parse(this.query.query, ['%(', ')s']);
+      const parts2 = this.mustacheWriter.parse(this.query.query, ['%(', ')s']);
+      // eslint-disable-next-line no-console
+      console.log(parts2);
       parameters = uniq(collectParams(parts.concat(parts2)));
     } catch (e) {
       logger('Failed parsing parameters: ', e);
