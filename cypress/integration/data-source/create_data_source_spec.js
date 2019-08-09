@@ -4,10 +4,15 @@ describe('Create Data Source', () => {
     cy.visit('/data_sources/new');
   });
 
-  it('creates a new PostgreSQL data source', () => {
-    cy.getByTestId('DatabaseSource').contains('PostgreSQL').click();
+  it('renders the page and takes a screenshot', () => {
+    cy.getByTestId('TypePicker').should('contain', 'PostgreSQL');
+    cy.percySnapshot('Create Data Source - Types');
+  });
 
-    cy.getByTestId('TargetName').type('Redash');
+  it('creates a new PostgreSQL data source', () => {
+    cy.getByTestId('TypePicker').contains('PostgreSQL').click();
+
+    cy.getByTestId('Name').type('Redash');
     cy.getByTestId('Host').type('{selectall}postgres');
     cy.getByTestId('User').type('postgres');
     cy.getByTestId('Password').type('postgres');
