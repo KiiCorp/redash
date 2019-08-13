@@ -1,6 +1,6 @@
 import moment from 'moment';
 import debug from 'debug';
-import Mustache, { Writer } from 'mustache';
+import Mustache from 'mustache';
 import {
   each, zipObject, isEmpty, map, filter, includes, union, uniq, has,
   isNull, isUndefined, isArray, isObject, identity,
@@ -178,17 +178,20 @@ class Parameters {
     this.query = query;
     this.updateParameters();
     this.initFromQueryString(queryString);
-    this.mustacheWriter = new Writer();
   }
 
   parseQuery() {
     let parameters = [];
     try {
       const parts = Mustache.parse(this.query.query);
-      const parts2 = this.mustacheWriter.parse(this.query.query, ['%(', ')s']);
-      // eslint-disable-next-line no-console
-      console.log(parts2);
-      parameters = uniq(collectParams(parts.concat(parts2)));
+      parameters = uniq(collectParams(parts));
+
+      const sqlStmt = /^\s*result\s*=\s*execute_shared_query\(.*?,\s*(.+)\)\s*$/m.exec(this.query.query);
+      if (sqlStmt && sqlStmt[1]) {
+        const matches = sqlStmt[1].matchAll(/%\((.+?)\)s/g);
+        const ps = Array.from(matches, m => m[1]);
+        parameters = uniq(parameters.concat(ps));
+      }
     } catch (e) {
       logger('Failed parsing parameters: ', e);
       // Return current parameters so we don't reset the list
