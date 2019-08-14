@@ -44,7 +44,7 @@ function VisualizationProvider() {
       '',
     );
 
-    mergedTemplates = `<div ng-switch on="visualization.type">${mergedTemplates}</div>`;
+    mergedTemplates = `<div ng-switch on="visualization.type" class="varanus_custom_for_embed">${mergedTemplates}</div>`;
 
     return mergedTemplates;
   };
