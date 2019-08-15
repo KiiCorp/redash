@@ -24,7 +24,6 @@ RUN pip install -r requirements_kii.txt
 
 COPY . /app
 COPY --from=frontend-builder /frontend/client/dist /app/client/dist
->>>>>>> 096140c0978eabee2d3b6a1ddfd870493c02e43c
 RUN chown -R redash /app
 USER redash
 
