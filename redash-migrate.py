@@ -142,6 +142,8 @@ def upgrade_db_migrate():
         logger.info('db is already latest version: %s' % (head))
     else:
         logger.info('db will be upgraded to rev %s' % (head))
+        if os.getenv('REDASH_SECRET_KEY') == None:
+            raise Exception('environment variable "REDASH_SECRET_KEY" required.')
         with current_app.app_context():
             upgrade()
             # upgrade() changes logging configuration. To display logs, reset logging configuration.
