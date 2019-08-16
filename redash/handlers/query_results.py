@@ -17,8 +17,8 @@ from redash.tasks.queries import enqueue_query
 from redash.utils import (collect_parameters_from_request, gen_query_hash, json_dumps, utcnow, to_filename)
 from redash.utils.parameterized_query import ParameterizedQuery, InvalidParameterError, dropdown_values
 
-from redash.varanus import can_query_securely
-from redash.varanus import varanus_render
+from redash.varanus import can_query_securely, has_parameter
+
 
 def error_response(message):
     return {'job': {'status': 4, 'error': message}}, 400
@@ -100,10 +100,10 @@ def run_query(query, parameters, data_source, query_id, max_age=0):
     if query_result:
         return {'query_result': query_result.to_dict()}
     else:
-        job = enqueue_query(query_text, data_source, current_user.id, metadata={
+        job = enqueue_query(query.text, data_source, current_user.id, metadata={
             "Username": current_user.email,
             "Query ID": query_id},
-                            raw_query_text=raw_query_text, query_params=parameter_values)
+                            raw_query_text=raw_query_text, query_params=parameters)
         return {'job': job.to_dict()}
 
 
@@ -256,7 +256,7 @@ class QueryResultResource(BaseResource):
             query = get_object_or_404(models.Query.get_by_id_and_org, query_id, self.current_org)
 
             if query_result is None and query is not None:
-                if settings.ALLOW_PARAMETERS_IN_EMBEDS and self.has_parameter(query.query_text):
+                if settings.ALLOW_PARAMETERS_IN_EMBEDS and has_parameter(query.query_text):
                     query_result = run_query_sync(query.data_source, parameter_values, query.query_text, max_age=max_age)
                 elif query.latest_query_data_id is not None:
                     query_result = get_object_or_404(models.QueryResult.get_by_id_and_org, query.latest_query_data_id, self.current_org)
@@ -328,9 +328,6 @@ class QueryResultResource(BaseResource):
         headers = {'Content-Type': "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
         return make_response(query_result.make_excel_content(), 200, headers)
 
-    @staticmethod
-    def has_parameter(query_text):
-        return len(collect_query_parameters(query_text)) > 0
 
 class JobResource(BaseResource):
     def get(self, job_id):

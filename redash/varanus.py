@@ -7,6 +7,7 @@ import pystache
 
 version = '1.0.6'
 
+
 def can_query_securely(data_source):
     if not hasattr(data_source.query_runner, 'run_secure_query'):
         return False
@@ -18,6 +19,11 @@ def varanus_render(template, context=None, **kwargs):
     renderer = pystache.Renderer()
     parsed = pystache.parse(str, (u'%(', u')s'))
     return renderer.render(parsed, context)
+
+
+def has_parameter(query_text):
+    from redash.utils.parameterized_query import _collect_query_parameters
+    return len(_collect_query_parameters(query_text)) > 0
 
 
 CHROMELOGGER_ENABLED = parse_boolean(os.environ.get("VARANUS_REDASH_CHROMELOGGER_ENABLED", "false"))

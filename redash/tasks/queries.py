@@ -132,7 +132,7 @@ def enqueue_query(query, data_source, user_id, scheduled_query=None, metadata={}
                     scheduled_query_id = None
                     time_limit = settings.ADHOC_QUERY_TIME_LIMIT
 
-                args = (query, data_source.id, metadata, user_id, scheduled_query_id, raw_query_text, query_params),
+                args = (query, data_source.id, metadata, user_id, scheduled_query_id, raw_query_text, query_params)
                 argsrepr = json_dumps({
                     'org_id': data_source.org_id,
                     'data_source_id': data_source.id,
