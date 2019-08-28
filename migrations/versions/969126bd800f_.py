@@ -24,7 +24,7 @@ def upgrade():
     # Update widgets position data:
     column_size = 3
     print("Updating dashboards position data:")
-    for dashboard in Dashboard.query:
+    for dashboard in db.session.query(Dashboard.id, Dashboard.layout, Dashboard.widgets):
         print("  Updating dashboard: {}".format(dashboard.id))
         layout = simplejson.loads(dashboard.layout)
 
