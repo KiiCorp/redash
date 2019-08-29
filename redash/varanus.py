@@ -5,7 +5,7 @@ from redash.settings.helpers import parse_boolean
 
 import pystache
 
-version = '1.0.6'
+version = '1.0.7'
 
 def can_query_securely(data_source):
     if not hasattr(data_source.query_runner, 'run_secure_query'):
