@@ -6,6 +6,8 @@ import os
 import json
 import sys
 from time import sleep
+import traceback
+
 
 from alembic import command
 from alembic.script import ScriptDirectory
@@ -369,7 +371,7 @@ def migrate():
             logger = logging.getLogger('redash.migrate.' + m.id)
             m.migrater()
         except Exception as e:
-            logger.error('%s failed. reason: %s', m.id, e)
+            traceback.print_exc()
             sys.exit(1)
     logger = logging.getLogger('redash.migrate')
     logger.info('completed successfully.')
