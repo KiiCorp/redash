@@ -39,6 +39,19 @@ verify() {
   exec /app/redash-migrate.py verify
 }
 
+reencrypt () {
+  if [ "x${REDASH_SECRET_KEY}" = "x" ]; then
+    echo "ERROR: REDASH_SECRET_KEY required."
+    exit 1
+  fi
+  if [ "x${VARANUS_REDASH_OLD_SECRET_KEY}" = "x" ]; then
+    echo "ERROR: VARANUS_REDASH_OLD_SECRET_KEY required."
+    exit 1
+  fi
+
+  exec /app/change-secret.py data_source "${VARANUS_REDASH_OLD_SECRET_KEY}" "${REDASH_SECRET_KEY}"
+}
+
 help() {
   echo "Redash Docker."
   echo ""
@@ -112,6 +125,10 @@ case "$1" in
   verify)
     shift
     verify
+    ;;
+  reencrypt)
+    shift
+    reencrypt
     ;;
   help)
     shift
