@@ -328,22 +328,28 @@ def setup_admin_migrate():
 
 
 def setup_admin_verify():
+    name = os.environ.get("VARANUS_REDASH_ADMIN_NAME")
     email = os.environ.get("VARANUS_REDASH_ADMIN_EMAIL")
+    password = os.environ.get("VARANUS_REDASH_ADMIN_PASSWORD")
+    if name == None:
+        raise Exception('environment variable "VARANUS_REDASH_ADMIN_NAME" required.')
     if email == None:
         raise Exception('environment variable "VARANUS_REDASH_ADMIN_EMAIL" required.')
+    if password == None:
+        raise Exception('environment variable "VARANUS_REDASH_ADMIN_PASSWORD" required.')
 
     default_org = get_default_org()
     if default_org == None:
         raise Exception('admin requires default org but not found.')
 
-    # Check and create an administrator for development.
-    count = models.User.query.filter(models.User.email == email, models.User.org == default_org).count()
-    if count == 0:
-        raise Exception('admin not found')
-    elif count == 1:
-        logger.info('admin already exists.')
-    else:
-        raise Exception('more than one admin exists: %d' % (c))
+    # Check an administrator for development.
+    admin = models.User.get_by_email_and_org(email, default_org)
+    if admin == None:
+        raise Exception('admin not found.')
+    if admin.name != name:
+        raise Exception('admin name is "%s" but "%s".' % (admin.name, name))
+    if not admin.verify_password(password):
+        raise Exception('admin password is unmatched.')
 
 
 def check_precondition():
