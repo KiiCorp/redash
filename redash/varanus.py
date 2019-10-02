@@ -2,6 +2,7 @@ import os
 from inspect import ismethod
 from redash.utils import mustache_render
 from redash.settings.helpers import parse_boolean
+import models
 
 import pystache
 
@@ -12,6 +13,30 @@ def can_query_securely(data_source):
     if not hasattr(data_source.query_runner, 'run_secure_query'):
         return False
     return ismethod(data_source.query_runner.run_secure_query)
+
+
+def can_access(user, data_source):
+    """Check user can access data source.
+
+        Parameters:
+        :user: user to access data_source
+        :data_source: data source to be accessed.
+        :return:
+    """
+
+    # check user is super admin.
+    org = models.Organization.query.filter(models.Organization.id == user.org_id).one()
+    for gid in user.group_ids:
+        group = models.Group.get_by_id_and_org(gid, org)
+        if "super_admin" in group.permissions:
+            return True
+
+    # check user can access the data source.
+    for gid in data_source.groups:
+        if gid in user.group_ids:
+            return True
+
+    return False
 
 
 def varanus_render(template, context=None, **kwargs):
