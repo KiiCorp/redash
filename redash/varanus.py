@@ -22,8 +22,11 @@ def varanus_render(template, context=None, **kwargs):
 
 
 def has_parameter(query_text):
-    from redash.utils.parameterized_query import _collect_query_parameters
-    return len(_collect_query_parameters(query_text)) > 0
+    from redash.utils.parameterized_query import _collect_query_parameters, _collect_key_names
+    if len(_collect_query_parameters(query_text)) > 0:
+        return True
+    nodes = pystache.parse(query_text, (u'%(', u')s'))
+    return len(_collect_key_names(nodes)) > 0
 
 
 CHROMELOGGER_ENABLED = parse_boolean(os.environ.get("VARANUS_REDASH_CHROMELOGGER_ENABLED", "false"))
