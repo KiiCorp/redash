@@ -55,7 +55,7 @@ def has_parameter(query_text):
 
 
 def get_tenant_id(headers):
-    return headers.get('X-VARANUS-PARAM-TENANT-ID', type=int)
+    return headers.get('X-VARANUS-TENANT-ID', type=int)
 
 
 CHROMELOGGER_ENABLED = parse_boolean(os.environ.get("VARANUS_REDASH_CHROMELOGGER_ENABLED", "false"))
