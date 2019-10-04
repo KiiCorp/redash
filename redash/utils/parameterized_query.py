@@ -48,7 +48,6 @@ def _collect_key_names(nodes):
     return distinct(keys)
 
 
-# FIX ME: VRE: to adapt varanus redash.
 def _collect_query_parameters(query):
     nodes = pystache.parse(query)
     keys = _collect_key_names(nodes)
