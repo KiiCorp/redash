@@ -28,6 +28,8 @@ ORG_NAME = 'Development'
 ORG_SLUG = 'default'
 SHARED_GROUP_NAME = 'shared'
 SHARED_DATASOURCE_NAME = 'Shared Data Source'
+COLD_CHAIN_GROUP_NAME = 'cold chain'
+COLD_CHAIN_DATASOURCE_NAME = 'Cold Chain Data Source'
 
 def reset_logging():
     output = "ext://sys.stdout" if settings.LOG_STDOUT else "ext://sys.stderr"
@@ -296,6 +298,83 @@ def setup_shared_ds_verify():
         raise Exception('more than one shared data source exists: %d' % (count))
 
 
+def setup_cold_chain_ds_migrate():
+    db = models.db
+
+    default_org = get_default_org()
+    if default_org == None:
+        raise Exception('Cold Chain Data Source requires default org but not found.')
+
+    # Check and create cold_chain group.
+    query = models.Group.query.filter(models.Group.name == COLD_CHAIN_GROUP_NAME,
+                                      models.Group.org == default_org)
+    count = query.count()
+    cold_chain_group = None
+    if count == 0:
+        cold_chain_group = models.Group(name=COLD_CHAIN_GROUP_NAME,
+                                    permissions=['view_query', 'execute_query'],
+                                    org=default_org,
+                                    type=models.Group.REGULAR_GROUP)
+        db.session.add(cold_chain_group)
+    elif count == 1:
+        logger.info('cold chain group is already exists.')
+        cold_chain_group = query.one()
+    else:
+        raise Exception('more than one cold chain data source exists')
+
+    # Check and create cold chain data source.
+    query = models.DataSource.query.filter(models.DataSource.name == COLD_CHAIN_DATASOURCE_NAME,
+                                           models.DataSource.org == default_org)
+    count = query.count()
+    if count == 0:
+        # Create a cold chain data source and assign it to admin and cold chain groups.
+        cold_chain_datasource = models.DataSource(org=default_org,
+                                              name=COLD_CHAIN_DATASOURCE_NAME,
+                                              type='python',
+                                              options={})
+        data_source_group_admin = models.DataSourceGroup(
+            data_source=cold_chain_datasource,
+            group=default_org.admin_group,
+            view_only=False)
+        data_source_group_cold_chain = models.DataSourceGroup(
+            data_source=cold_chain_datasource,
+            group=cold_chain_group,
+            view_only=True)
+        db.session.add_all([cold_chain_datasource, data_source_group_admin, data_source_group_cold_chain])
+    elif count == 1:
+        logger.info('cold chain datasource is already exists.')
+    else:
+        raise Exception('more than one cold chain data source exists: %d' % (count))
+
+    db.session.commit()
+
+
+def setup_cold_chain_ds_verify():
+    default_org = get_default_org()
+    if default_org == None:
+        raise Exception('cold chain datasource requires default org but not found.')
+
+    # Check and create cold chain group.
+    count = models.Group.query.filter(models.Group.name == COLD_CHAIN_GROUP_NAME,
+                                      models.Group.org == default_org).count()
+    if count == 0:
+        raise Exception('cold chain group not found.')
+    elif count == 1:
+        logger.info('cold chain group is already exists.')
+    else:
+        raise Exception('more than one cold chain group exists')
+
+    # Check and create cold chain data source.
+    count = models.DataSource.query.filter(models.DataSource.name == COLD_CHAIN_DATASOURCE_NAME,
+                                           models.DataSource.org == default_org).count()
+    if count == 0:
+        raise Exception('cold chain data source not found')
+    elif count == 1:
+        logger.info('cold chain datasource is already exists.')
+    else:
+        raise Exception('more than one cold chain data source exists: %d' % (count))
+
+
 def setup_admin_migrate():
     name = os.environ.get("VARANUS_REDASH_ADMIN_NAME")
     email = os.environ.get("VARANUS_REDASH_ADMIN_EMAIL")
@@ -370,6 +449,7 @@ migrations = (
     migration('db.upgrade', upgrade_db_migrate, upgrade_db_verify),
     migration('db.setup.org', setup_org_migrate, setup_org_verify),
     migration('db.setup.shared_ds', setup_shared_ds_migrate, setup_shared_ds_verify),
+    migration('db.setup.cold_chain_ds', setup_cold_chain_ds_migrate, setup_cold_chain_ds_verify),
     migration('db.setup.admin', setup_admin_migrate, setup_admin_verify),
 )
 
