@@ -433,12 +433,19 @@ migrations = (
 
 
 @cli.command()
-def migrate():
+@click.option('--exclude', help="exclude migration's ID, commna separated", default=None)
+def migrate(exclude):
     setup_db()
     global logger
+    excludes = []
+    if exclude != None:
+        excludes = exclude.split(',')
     for m in migrations:
         try:
             logger = logging.getLogger('redash.migrate.' + m.id)
+            if m.id in excludes:
+                logger.info('this migration is skipped by "exclude" option.')
+                continue
             m.migrater()
         except Exception as e:
             traceback.print_exc()
@@ -449,12 +456,19 @@ def migrate():
 
 
 @cli.command()
-def verify():
+@click.option('--exclude', help="exclude migration's ID, commna separated", default=None)
+def verify(exclude):
     setup_db()
     global logger
+    excludes = []
+    if exclude != None:
+        excludes = exclude.split(',')
     for m in migrations:
         try:
             logger = logging.getLogger('redash.verify.' + m.id)
+            if m.id in excludes:
+                logger.info('this verification is skipped by "exclude" option.')
+                continue
             m.verifier()
         except Exception as e:
             logger.error('%s failed. reason: %s', m.id, e)
