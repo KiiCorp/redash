@@ -433,19 +433,27 @@ migrations = (
 
 
 @cli.command()
-@click.option('--exclude', help="exclude migration's ID, commna separated", default=None)
-def migrate(exclude):
+@click.option('--exclude', help="exclude migration's ID, comma separated", default=None)
+@click.option('--include', help="include migration's ID, comma separated", default=None)
+def migrate(exclude, include):
     setup_db()
     global logger
     excludes = []
     if exclude != None:
         excludes = exclude.split(',')
+    includes = []
+    if include != None:
+        includes = include.split(',')
     for m in migrations:
         try:
             logger = logging.getLogger('redash.migrate.' + m.id)
             if m.id in excludes:
                 logger.info('this migration is skipped by "exclude" option.')
                 continue
+            if len(includes) > 0:
+                if m.id not in includes:
+                    logger.info('this migration is skipped by "include" option.')
+                    continue
             m.migrater()
         except Exception as e:
             traceback.print_exc()
@@ -456,19 +464,27 @@ def migrate(exclude):
 
 
 @cli.command()
-@click.option('--exclude', help="exclude migration's ID, commna separated", default=None)
+@click.option('--exclude', help="exclude migration's ID, comma separated", default=None)
+@click.option('--include', help="include migration's ID, comma separated", default=None)
 def verify(exclude):
     setup_db()
     global logger
     excludes = []
     if exclude != None:
         excludes = exclude.split(',')
+    includes = []
+    if include != None:
+        includes = include.split(',')
     for m in migrations:
         try:
             logger = logging.getLogger('redash.verify.' + m.id)
             if m.id in excludes:
                 logger.info('this verification is skipped by "exclude" option.')
                 continue
+            if len(includes) > 0:
+                if m.id not in includes:
+                    logger.info('this migration is skipped by "include" option.')
+                    continue
             m.verifier()
         except Exception as e:
             logger.error('%s failed. reason: %s', m.id, e)
