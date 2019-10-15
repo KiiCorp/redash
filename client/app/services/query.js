@@ -215,7 +215,7 @@ class Parameters {
       const parts = Mustache.parse(this.query.query);
       parameters = uniq(collectParams(parts));
 
-      const sqlStmt = /^\s*result\s*=\s*execute_(?:shared|one_schema_shared)_query\(.*?,\s*(.+)\)$/m.exec(this.query.query);
+      const sqlStmt = /^\s*result\s*=\s*execute_shared_query2?\(.*?,\s*(.+)\)$/m.exec(this.query.query);
       if (sqlStmt && sqlStmt[1]) {
         const matches = sqlStmt[1].matchAll(/%\((.+?)\)s/g);
         const ps = Array.from(matches, m => m[1]);

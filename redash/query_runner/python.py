@@ -244,8 +244,8 @@ class Python(BaseQueryRunner):
 
 
     @staticmethod
-    def execute_one_schema_shared_query(data_source_name_or_id, query, user, parameters):
-        """Run one schema shared query.
+    def execute_shared_query2(data_source_name_or_id, query, user, parameters):
+        """New version of execute_shared_query.
 
         Parameters:
         :data_source_name_or_id string|integer: Name or ID of the data source
@@ -401,7 +401,7 @@ class Python(BaseQueryRunner):
             restricted_globals["execute_query"] = self.execute_query
             restricted_globals["execute_restricted_query"] = lambda data_source_name, query: self.execute_restricted_query(data_source_name, query, user)
             restricted_globals["execute_shared_query"] = lambda tenant_id, query: self.execute_shared_query(tenant_id, query, user, params)
-            restricted_globals["execute_one_schema_shared_query"] = lambda data_source_name, query: self.execute_one_schema_shared_query(data_source_name, query, user, params)
+            restricted_globals["execute_shared_query2"] = lambda data_source_name, query: self.execute_shared_query2(data_source_name, query, user, params)
             restricted_globals["tenant_id2name"] = self.tenant_id2name
             restricted_globals["add_result_column"] = self.add_result_column
             restricted_globals["add_result_row"] = self.add_result_row

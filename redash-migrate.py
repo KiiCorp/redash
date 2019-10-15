@@ -28,7 +28,7 @@ ORG_NAME = 'Development'
 ORG_SLUG = 'default'
 SHARED_GROUP_NAME = 'shared'
 SHARED_DATASOURCE_NAME = 'Shared Data Source'
-ALL_TENANTS_DATASOURCE_NAME = 'All Tenants'
+CROSSING_OVER_TENANTS_DATASOURCE_NAME = 'Crossing Over Tenants'
 
 def reset_logging():
     output = "ext://sys.stdout" if settings.LOG_STDOUT else "ext://sys.stderr"
@@ -297,12 +297,12 @@ def setup_shared_ds_verify():
         raise Exception('more than one shared data source exists: %d' % (count))
 
 
-def setup_all_tenants_ds_migrate():
+def setup_crossing_over_tenants_ds_migrate():
     db = models.db
 
     default_org = get_default_org()
     if default_org == None:
-        raise Exception('One Schema Shared Data Source requires default org but not found.')
+        raise Exception('Crossing Over Tenants Data Source requires default org but not found.')
 
     # Get shared group.
     query = models.Group.query.filter(models.Group.name == SHARED_GROUP_NAME,
@@ -310,47 +310,47 @@ def setup_all_tenants_ds_migrate():
     count = query.count()
     shared_group = None
     if count == 0:
-        raise Exception('shared group must exist before creating all tenants datasource')
+        raise Exception('shared group must exist before creating crossing over tenants datasource')
     elif count != 1:
         raise Exception('more than one shared group exists')
     else:
         shared_group = query.one()
 
-    # Check and create all tenants datasource.
-    count = models.DataSource.query.filter(models.DataSource.name == ALL_TENANTS_DATASOURCE_NAME,
+    # Check and create crossing over tenants datasource.
+    count = models.DataSource.query.filter(models.DataSource.name == CROSSING_OVER_TENANTS_DATASOURCE_NAME,
                                            models.DataSource.org == default_org).count()
     if count == 0:
-        # Create an all tenants data source and assign it to shared group with read only permission.
-        all_tenants_datasource = models.DataSource(org=default_org,
-                                                   name=ALL_TENANTS_DATASOURCE_NAME,
+        # Create an crossing over tenants data source and assign it to shared group with read only permission.
+        crossing_over_tenants_datasource = models.DataSource(org=default_org,
+                                                   name=CROSSING_OVER_TENANTS_DATASOURCE_NAME,
                                                    type='python',
                                                    options={})
-        datasource_group = models.DataSourceGroup(data_source=all_tenants_datasource,
+        datasource_group = models.DataSourceGroup(data_source=crossing_over_tenants_datasource,
                                                   group=shared_group,
                                                   view_only=True)
-        db.session.add_all([all_tenants_datasource, datasource_group])
+        db.session.add_all([crossing_over_tenants_datasource, datasource_group])
     elif count == 1:
-        logger.info('all tenants datasource already exists')
+        logger.info('crossing over tenants datasource already exists')
     else:
-        raise Exception('more than one all tenants group exists')
+        raise Exception('more than one crossing over tenants group exists')
 
     db.session.commit()
 
 
-def setup_all_tenants_ds_verify():
+def setup_crossing_over_tenants_ds_verify():
     default_org = get_default_org()
     if default_org == None:
-        raise Exception('One Schema Shared Data Source requires default org but not found.')
+        raise Exception('Crossing Over Tenants Data Source requires default org but not found.')
 
-    # Check create all tenants datasource.
-    count = models.DataSource.query.filter(models.DataSource.name == ALL_TENANTS_DATASOURCE_NAME,
+    # Check create crossing over tenants datasource.
+    count = models.DataSource.query.filter(models.DataSource.name == CROSSING_OVER_TENANTS_DATASOURCE_NAME,
                                            models.DataSource.org == default_org).count()
     if count == 0:
-        raise Exception('all tenants datasource not found')
+        raise Exception('crossing over tenants datasource not found')
     elif count == 1:
-        logger.info('all tenants datasource already exists')
+        logger.info('crossing over tenants datasource already exists')
     else:
-        raise Exception('more than one all tenants group exists')
+        raise Exception('more than one crossing over tenants group exists')
 
 
 def setup_admin_migrate():
@@ -427,7 +427,7 @@ migrations = (
     migration('db.upgrade', upgrade_db_migrate, upgrade_db_verify),
     migration('db.setup.org', setup_org_migrate, setup_org_verify),
     migration('db.setup.shared_ds', setup_shared_ds_migrate, setup_shared_ds_verify),
-    migration('db.setup.all_tenants_ds', setup_all_tenants_ds_migrate, setup_all_tenants_ds_verify),
+    migration('db.setup.crossing_over_tenants_ds', setup_crossing_over_tenants_ds_migrate, setup_crossing_over_tenants_ds_verify),
     migration('db.setup.admin', setup_admin_migrate, setup_admin_verify),
 )
 
