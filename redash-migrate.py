@@ -321,14 +321,14 @@ def setup_all_tenants_ds_migrate():
                                            models.DataSource.org == default_org).count()
     if count == 0:
         # Create an all tenants data source and assign it to shared group with read only permission.
-        all_tenant_datasource = models.DataSource(org=default_org,
-                                                  name=ALL_TENANTS_DATASOURCE_NAME,
-                                                  type='python',
-                                                  options={})
-        datasource_group = models.DataSourceGroup(data_source=all_tenant_datasource,
+        all_tenants_datasource = models.DataSource(org=default_org,
+                                                   name=ALL_TENANTS_DATASOURCE_NAME,
+                                                   type='python',
+                                                   options={})
+        datasource_group = models.DataSourceGroup(data_source=all_tenants_datasource,
                                                   group=shared_group,
                                                   view_only=True)
-        db.session.add_all([all_tenant_datasource, datasource_group])
+        db.session.add_all([all_tenants_datasource, datasource_group])
     elif count == 1:
         logger.info('all tenants datasource already exists')
     else:
@@ -427,7 +427,7 @@ migrations = (
     migration('db.upgrade', upgrade_db_migrate, upgrade_db_verify),
     migration('db.setup.org', setup_org_migrate, setup_org_verify),
     migration('db.setup.shared_ds', setup_shared_ds_migrate, setup_shared_ds_verify),
-    migration('db.setup.all_tenant_ds', setup_all_tenants_ds_migrate, setup_all_tenants_ds_verify),
+    migration('db.setup.all_tenants_ds', setup_all_tenants_ds_migrate, setup_all_tenants_ds_verify),
     migration('db.setup.admin', setup_admin_migrate, setup_admin_verify),
 )
 
