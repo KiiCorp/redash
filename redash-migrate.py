@@ -323,7 +323,7 @@ def setup_crossing_over_tenants_ds_migrate():
         # Create an crossing over tenants data source and assign it to shared group with read only permission.
         crossing_over_tenants_datasource = models.DataSource(org=default_org,
                                                    name=CROSSING_OVER_TENANTS_DATASOURCE_NAME,
-                                                   type='python',
+                                                   type='pg',
                                                    options={})
         datasource_group = models.DataSourceGroup(data_source=crossing_over_tenants_datasource,
                                                   group=shared_group,
@@ -466,7 +466,7 @@ def migrate(exclude, include):
 @cli.command()
 @click.option('--exclude', help="exclude migration's ID, comma separated", default=None)
 @click.option('--include', help="include migration's ID, comma separated", default=None)
-def verify(exclude):
+def verify(exclude, include):
     setup_db()
     global logger
     excludes = []
