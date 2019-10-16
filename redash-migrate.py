@@ -436,6 +436,12 @@ migrations = (
 @click.option('--exclude', help="exclude migration's ID, comma separated", default=None)
 @click.option('--include', help="include migration's ID, comma separated", default=None)
 def migrate(exclude, include):
+    """
+    Verification tool for varanus redash.
+
+    Please refer 'DB Migration and Verification with docker endpoint' in varanus redash github wiki page.
+    """
+
     setup_db()
     global logger
     excludes = []
@@ -467,6 +473,12 @@ def migrate(exclude, include):
 @click.option('--exclude', help="exclude migration's ID, comma separated", default=None)
 @click.option('--include', help="include migration's ID, comma separated", default=None)
 def verify(exclude, include):
+    """
+    Migration tool for varanus redash.
+
+    Please refer 'DB Migration and Verification with docker endpoint' in varanus redash github wiki page.
+    """
+
     setup_db()
     global logger
     excludes = []
