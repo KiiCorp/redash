@@ -2,7 +2,6 @@ import os
 from inspect import ismethod
 from redash.utils import mustache_render
 from redash.settings.helpers import parse_boolean
-import models
 
 import pystache
 
