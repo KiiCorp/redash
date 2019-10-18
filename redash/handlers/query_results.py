@@ -17,7 +17,7 @@ from redash.tasks.queries import enqueue_query
 from redash.utils import (collect_parameters_from_request, gen_query_hash, json_dumps, utcnow, to_filename)
 from redash.utils.parameterized_query import ParameterizedQuery, InvalidParameterError, dropdown_values
 
-from redash.varanus import can_query_securely, has_parameter, get_tenant_id
+from redash.varanus import can_query_securely, has_parameter
 
 
 def error_response(message):
@@ -141,9 +141,8 @@ class QueryResultListResource(BaseResource):
         max_age = int(max_age)
         query_id = params.get('query_id', 'adhoc')
         parameters = params.get('parameters', collect_parameters_from_request(request.args))
-        tenant_id = get_tenant_id(request.headers)
-        if tenant_id is not None:
-            parameters['tenant_id'] = tenant_id
+        if varanus.ALLOW_HEADER_PARAMETERS:
+            parameters['_header'] = request.headers
 
         parameterized_query = ParameterizedQuery(query)
 
@@ -208,9 +207,8 @@ class QueryResultResource(BaseResource):
         """
         params = request.get_json(force=True)
         parameters = params.get('parameters', {})
-        tenant_id = get_tenant_id(request.headers)
-        if tenant_id is not None:
-            parameters['tenant_id'] = tenant_id
+        if varanus.ALLOW_HEADER_PARAMETERS:
+            parameters['_header'] = request.headers
         max_age = params.get('max_age', -1)
         # max_age might have the value of None, in which case calling int(None) will fail
         if max_age is None:
@@ -251,9 +249,8 @@ class QueryResultResource(BaseResource):
 
         parameter_values = collect_parameters_from_request(request.args)
         max_age = int(request.args.get('maxAge', 0))
-        tenant_id = get_tenant_id(request.headers)
-        if tenant_id is not None:
-            parameter_values['tenant_id'] = tenant_id
+        if varanus.ALLOW_HEADER_PARAMETERS:
+            parameter_values['_header'] = request.headers
 
         query_result = None
         query = None

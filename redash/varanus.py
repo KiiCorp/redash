@@ -29,9 +29,6 @@ def has_parameter(query_text):
     return len(_collect_key_names(nodes)) > 0
 
 
-def get_tenant_id(headers):
-    return headers.get('X-VARANUS-TENANT-ID', type=int)
-
-
 CHROMELOGGER_ENABLED = parse_boolean(os.environ.get("VARANUS_REDASH_CHROMELOGGER_ENABLED", "false"))
 DBOBJ_PREFIX=os.environ.get('VARANUS_REDASH_DATABASE_OBJECTPREFIX', '')
+ALLOW_HEADER_PARAMETERS = parse_boolean(os.environ.get("VARANUS_REDASH_ALLOW_HEADER_PARAMETERS"), "false")
