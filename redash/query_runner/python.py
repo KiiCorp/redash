@@ -244,14 +244,14 @@ class Python(BaseQueryRunner):
 
 
     @staticmethod
-    def execute_shared_query2(data_source_name_or_id, query, user, parameters):
-        """New version of execute_shared_query.
+    def execute_query_xxx(data_source_name_or_id, query, parameters, user):
+        """Secured execute_query.
 
         Parameters:
         :data_source_name_or_id string|integer: Name or ID of the data source
-        :query string: Query to run
+        :query str: Query to run
+        :parameters dict: parameter for query.
         :user models.User: user to execute query
-        :parameters array: parameter for query.
         """
 
         try:
@@ -401,7 +401,7 @@ class Python(BaseQueryRunner):
             restricted_globals["execute_query"] = self.execute_query
             restricted_globals["execute_restricted_query"] = lambda data_source_name, query: self.execute_restricted_query(data_source_name, query, user)
             restricted_globals["execute_shared_query"] = lambda tenant_id, query: self.execute_shared_query(tenant_id, query, user, params)
-            restricted_globals["execute_shared_query2"] = lambda data_source_name, query: self.execute_shared_query2(data_source_name, query, user, params)
+            restricted_globals["execute_query_xxx"] = lambda data_source_name, query, parameters: self.execute_query_xxx(data_source_name, query, parameters, user)
             restricted_globals["tenant_id2name"] = self.tenant_id2name
             restricted_globals["add_result_column"] = self.add_result_column
             restricted_globals["add_result_row"] = self.add_result_row
