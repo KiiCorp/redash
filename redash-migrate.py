@@ -28,7 +28,7 @@ ORG_NAME = 'Development'
 ORG_SLUG = 'default'
 SHARED_GROUP_NAME = 'shared'
 SHARED_DATASOURCE_NAME = 'Shared Data Source'
-CROSSING_OVER_TENANTS_DATASOURCE_NAME = 'Crossing Over Tenants'
+PROXY_TENANT_DATASOURCE_NAME = 'Proxy Tenant'
 
 def reset_logging():
     output = "ext://sys.stdout" if settings.LOG_STDOUT else "ext://sys.stderr"
@@ -297,12 +297,12 @@ def setup_shared_ds_verify():
         raise Exception('more than one shared data source exists: %d' % (count))
 
 
-def setup_crossing_over_tenants_ds_migrate():
+def setup_proxy_tenant_ds_migrate():
     db = models.db
 
     default_org = get_default_org()
     if default_org == None:
-        raise Exception('Crossing Over Tenants Data Source requires default org but not found.')
+        raise Exception('Proxy Tenant Data Source requires default org but not found.')
 
     # Get shared group.
     query = models.Group.query.filter(models.Group.name == SHARED_GROUP_NAME,
@@ -310,47 +310,47 @@ def setup_crossing_over_tenants_ds_migrate():
     count = query.count()
     shared_group = None
     if count == 0:
-        raise Exception('shared group must exist before creating crossing over tenants datasource')
+        raise Exception('shared group must exist before creating proxy tenant datasource')
     elif count != 1:
         raise Exception('more than one shared group exists')
     else:
         shared_group = query.one()
 
-    # Check and create crossing over tenants datasource.
-    count = models.DataSource.query.filter(models.DataSource.name == CROSSING_OVER_TENANTS_DATASOURCE_NAME,
+    # Check and create proxy tenant datasource.
+    count = models.DataSource.query.filter(models.DataSource.name == PROXY_TENANT_DATASOURCE_NAME,
                                            models.DataSource.org == default_org).count()
     if count == 0:
-        # Create an crossing over tenants data source and assign it to shared group with read only permission.
-        crossing_over_tenants_datasource = models.DataSource(org=default_org,
-                                                   name=CROSSING_OVER_TENANTS_DATASOURCE_NAME,
+        # Create an proxy tenant data source and assign it to shared group with read only permission.
+        proxy_tenant_datasource = models.DataSource(org=default_org,
+                                                   name=PROXY_TENANT_DATASOURCE_NAME,
                                                    type='pg',
                                                    options={})
-        datasource_group = models.DataSourceGroup(data_source=crossing_over_tenants_datasource,
+        datasource_group = models.DataSourceGroup(data_source=proxy_tenant_datasource,
                                                   group=shared_group,
                                                   view_only=True)
-        db.session.add_all([crossing_over_tenants_datasource, datasource_group])
+        db.session.add_all([proxy_tenant_datasource, datasource_group])
     elif count == 1:
-        logger.info('crossing over tenants datasource already exists')
+        logger.info('proxy tenant datasource already exists')
     else:
-        raise Exception('more than one crossing over tenants group exists')
+        raise Exception('more than one proxy tenant group exists')
 
     db.session.commit()
 
 
-def setup_crossing_over_tenants_ds_verify():
+def setup_proxy_tenant_ds_verify():
     default_org = get_default_org()
     if default_org == None:
-        raise Exception('Crossing Over Tenants Data Source requires default org but not found.')
+        raise Exception('Proxy Tenant Data Source requires default org but not found.')
 
-    # Check create crossing over tenants datasource.
-    count = models.DataSource.query.filter(models.DataSource.name == CROSSING_OVER_TENANTS_DATASOURCE_NAME,
+    # Check create proxy tenant datasource.
+    count = models.DataSource.query.filter(models.DataSource.name == PROXY_TENANT_DATASOURCE_NAME,
                                            models.DataSource.org == default_org).count()
     if count == 0:
-        raise Exception('crossing over tenants datasource not found')
+        raise Exception('proxy tenant datasource not found')
     elif count == 1:
-        logger.info('crossing over tenants datasource already exists')
+        logger.info('proxy tenant datasource already exists')
     else:
-        raise Exception('more than one crossing over tenants group exists')
+        raise Exception('more than one proxy tenant group exists')
 
 
 def setup_admin_migrate():
@@ -427,7 +427,7 @@ migrations = (
     migration('db.upgrade', upgrade_db_migrate, upgrade_db_verify),
     migration('db.setup.org', setup_org_migrate, setup_org_verify),
     migration('db.setup.shared_ds', setup_shared_ds_migrate, setup_shared_ds_verify),
-    migration('db.setup.crossing_over_tenants_ds', setup_crossing_over_tenants_ds_migrate, setup_crossing_over_tenants_ds_verify),
+    migration('db.setup.proxy_tenant_ds', setup_proxy_tenant_ds_migrate, setup_proxy_tenant_ds_verify),
     migration('db.setup.admin', setup_admin_migrate, setup_admin_verify),
 )
 
