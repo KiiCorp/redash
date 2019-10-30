@@ -28,7 +28,7 @@ ORG_NAME = 'Development'
 ORG_SLUG = 'default'
 SHARED_GROUP_NAME = 'shared'
 SHARED_DATASOURCE_NAME = 'Shared Data Source'
-PROXY_TENANT_DATASOURCE_NAME = 'Proxy Tenant'
+
 
 def reset_logging():
     output = "ext://sys.stdout" if settings.LOG_STDOUT else "ext://sys.stderr"
