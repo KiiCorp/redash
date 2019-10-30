@@ -29,6 +29,13 @@ def has_parameter(query_text):
     return len(_collect_key_names(nodes)) > 0
 
 
+def header2dict(headers):
+    d = {}
+    for item in headers.to_wsgi_list():
+        d[item[0]] = item[1]
+    return d
+
+
 CHROMELOGGER_ENABLED = parse_boolean(os.environ.get("VARANUS_REDASH_CHROMELOGGER_ENABLED", "false"))
 DBOBJ_PREFIX=os.environ.get('VARANUS_REDASH_DATABASE_OBJECTPREFIX', '')
 ALLOW_HEADER_PARAMETERS = parse_boolean(os.environ.get("VARANUS_REDASH_ALLOW_HEADER_PARAMETERS", "false"))

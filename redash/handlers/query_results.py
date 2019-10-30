@@ -17,7 +17,7 @@ from redash.tasks.queries import enqueue_query
 from redash.utils import (collect_parameters_from_request, gen_query_hash, json_dumps, utcnow, to_filename)
 from redash.utils.parameterized_query import ParameterizedQuery, InvalidParameterError, dropdown_values
 
-from redash.varanus import can_query_securely, has_parameter, ALLOW_HEADER_PARAMETERS
+from redash.varanus import can_query_securely, has_parameter, header2dict, ALLOW_HEADER_PARAMETERS
 
 
 def error_response(message):
@@ -142,7 +142,7 @@ class QueryResultListResource(BaseResource):
         query_id = params.get('query_id', 'adhoc')
         parameters = params.get('parameters', collect_parameters_from_request(request.args))
         if ALLOW_HEADER_PARAMETERS:
-            parameters['_header'] = request.headers
+            parameters['_header'] = header2dict(request.headers)
 
         parameterized_query = ParameterizedQuery(query)
 
@@ -208,7 +208,7 @@ class QueryResultResource(BaseResource):
         params = request.get_json(force=True)
         parameters = params.get('parameters', {})
         if ALLOW_HEADER_PARAMETERS:
-            parameters['_header'] = request.headers
+            parameters['_header'] = header2dict(request.headers)
         max_age = params.get('max_age', -1)
         # max_age might have the value of None, in which case calling int(None) will fail
         if max_age is None:
@@ -250,7 +250,7 @@ class QueryResultResource(BaseResource):
         parameter_values = collect_parameters_from_request(request.args)
         max_age = int(request.args.get('maxAge', 0))
         if ALLOW_HEADER_PARAMETERS:
-            parameter_values['_header'] = request.headers
+            parameter_values['_header'] = header2dict(request.headers)
 
         query_result = None
         query = None

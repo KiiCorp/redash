@@ -369,7 +369,11 @@ class Python(BaseQueryRunner):
         try:
             error = None
 
-            local_vals = {'local_vals': params}
+            local_vals = {}
+            if '_header' in params:
+                local_vals['header'] = params['_header']
+                del params['_header']
+            local_vals['local_vals'] = params
             local_vals.update(self._script_locals)
             regular_query = re.sub(r'([\'"]?){{(.*?)}}\1', r"local_vals['{{\2}}']", query)
             place_holders = {}
