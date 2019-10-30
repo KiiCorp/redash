@@ -99,6 +99,9 @@ class ParameterizedQuery(object):
         return self
 
     def _valid(self, name, value):
+        if name == "_header":
+            # avoid validation for request header. This is for varanus redash.
+            return True
         if not self.schema:
             return True
 
