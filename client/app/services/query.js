@@ -221,6 +221,14 @@ class Parameters {
         const ps = Array.from(matches, m => m[1]);
         parameters = uniq(parameters.concat(ps));
       }
+      const re = /\bheader\[(['"])([a-zA-Z0-9\-_.]+)\1\]/g;
+      let header = re.exec(this.query.query);
+      const headerNames = [];
+      while (header !== null) {
+        headerNames.push(header[2]);
+        header = re.exec(this.query.query);
+      }
+      parameters = uniq(parameters.concat(headerNames));
     } catch (e) {
       logger('Failed parsing parameters: ', e);
       // Return current parameters so we don't reset the list
