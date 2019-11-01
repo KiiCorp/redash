@@ -16,9 +16,27 @@ def can_query_securely(data_source):
 
 def varanus_render(template, context=None, **kwargs):
     str = mustache_render(template, context, **kwargs)
+    str = render_sql_placeholder(str, context)
+    print(context)
+    if '_header' in context:
+        str = render_header(str, context['_header'])
+        print(str)
+    return str
+
+
+def render_sql_placeholder(str, context):
     renderer = pystache.Renderer()
     parsed = pystache.parse(str, (u'%(', u')s'))
     return renderer.render(parsed, context)
+
+
+def render_header(template, context):
+    r1 = pystache.Renderer()
+    p1 = pystache.parse(template, (u"header['", u"']"))
+    str = r1.render(p1, context)
+    r2 = pystache.Renderer()
+    p2 = pystache.parse(str, (u'header["', u'"]'))
+    return r2.render(p2, context)
 
 
 def has_parameter(query_text):
