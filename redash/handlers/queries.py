@@ -18,6 +18,8 @@ from redash.utils import collect_parameters_from_request
 from redash.serializers import QuerySerializer
 from redash.utils.parameterized_query import ParameterizedQuery
 
+from redash.varanus import header2dict, ALLOW_HEADER_PARAMETERS
+
 
 # Ordering map for relationships
 order_map = {
@@ -412,6 +414,8 @@ class QueryRefreshResource(BaseResource):
         require_access(query.groups, self.current_user, not_view_only)
 
         parameter_values = collect_parameters_from_request(request.args)
+        if ALLOW_HEADER_PARAMETERS:
+            parameter_values['_header'] = header2dict(request.headers)
         parameterized_query = ParameterizedQuery(query.query_text)
 
         return run_query(parameterized_query, parameter_values, query.data_source, query.id)
