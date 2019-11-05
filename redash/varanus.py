@@ -5,7 +5,7 @@ from redash.settings.helpers import parse_boolean
 
 import pystache
 
-version = '1.0.8'
+version = '1.1.0'
 
 
 def can_query_securely(data_source):
