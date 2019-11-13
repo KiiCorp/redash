@@ -29,7 +29,3 @@ requests_aws_sign==0.1.4
 snowflake_connector_python==1.6.10
 # certifi is needed to support MongoDB and SSL:
 certifi
-
-
-pandas==0.24.2
-numpy==1.16.4

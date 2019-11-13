@@ -61,7 +61,3 @@ disposable-email-domains
 # It is not included by default because of the GPL license conflict.
 # ldap3==2.2.4
 gevent==1.4.0
-
-
-oauthlib==2.1.0
-kombu==4.2.2.post1

@@ -1,9 +1,9 @@
 <div class="tile m-l-10 m-r-10 embed__vis embed__vis2">
   <div class="embed-heading p-t-10 p-b-10 p-r-15 p-l-15">
     <h3>
-      <img ng-if="!$ctrl.noTitle" ng-src="{{$ctrl.logoUrl}}" style="height: 24px;"/>
+      <img ng-src="{{$ctrl.logoUrl}}" style="height: 24px;"/>
       <visualization-name visualization="$ctrl.visualization"/>
-      {{$ctrl.noTitle ? '' : $ctrl.query.name}}
+      {{$ctrl.query.name}}
 
       <small ng-if="$ctrl.showQueryDescription">
         <div class="text-muted" ng-bind-html="$ctrl.query.description | markdown"></div>

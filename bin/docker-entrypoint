@@ -2,11 +2,6 @@
 set -e
 
 worker() {
-  if [ "x${REDASH_SECRET_KEY}" = "x" ]; then
-    echo "ERROR: REDASH_SECRET_KEY is required."
-    exit 1
-  fi
-
   WORKERS_COUNT=${WORKERS_COUNT:-2}
   QUEUES=${QUEUES:-queries,scheduled_queries,celery,schemas}
 
@@ -15,11 +10,6 @@ worker() {
 }
 
 scheduler() {
-  if [ "x${REDASH_SECRET_KEY}" = "x" ]; then
-    echo "ERROR: REDASH_SECRET_KEY is required."
-    exit 1
-  fi
-
   WORKERS_COUNT=${WORKERS_COUNT:-1}
   QUEUES=${QUEUES:-celery}
   SCHEDULE_DB=${SCHEDULE_DB:-celerybeat-schedule}
@@ -30,11 +20,6 @@ scheduler() {
 }
 
 server() {
-  if [ "x${REDASH_SECRET_KEY}" = "x" ]; then
-    echo "ERROR: REDASH_SECRET_KEY is required."
-    exit 1
-  fi
-
   exec /usr/local/bin/gunicorn -b 0.0.0.0:5000 --name redash -w${REDASH_WEB_WORKERS:-4} redash.wsgi:app
 }
 
@@ -44,27 +29,6 @@ create_db() {
 
 celery_healthcheck() {
   exec /usr/local/bin/celery inspect ping --app=redash.worker -d celery@$HOSTNAME
-}
-
-migrate() {
-  exec /app/redash-migrate.py migrate
-}
-
-verify() {
-  exec /app/redash-migrate.py verify
-}
-
-reencrypt () {
-  if [ "x${REDASH_SECRET_KEY}" = "x" ]; then
-    echo "ERROR: REDASH_SECRET_KEY is required."
-    exit 1
-  fi
-  if [ "x${VARANUS_REDASH_OLD_SECRET_KEY}" = "x" ]; then
-    echo "ERROR: VARANUS_REDASH_OLD_SECRET_KEY is required."
-    exit 1
-  fi
-
-  exec /app/change-secret.py data_source "${VARANUS_REDASH_OLD_SECRET_KEY}" "${REDASH_SECRET_KEY}"
 }
 
 help() {
@@ -132,18 +96,6 @@ case "$1" in
   tests)
     shift
     tests $@
-    ;;
-  migrate)
-    shift
-    migrate
-    ;;
-  verify)
-    shift
-    verify
-    ;;
-  reencrypt)
-    shift
-    reencrypt
     ;;
   help)
     shift
