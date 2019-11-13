@@ -20,6 +20,10 @@ celery_schedule = {
         'task': 'redash.tasks.refresh_queries',
         'schedule': timedelta(seconds=30)
     },
+    'cleanup_tasks': {
+        'task': 'redash.tasks.cleanup_tasks',
+        'schedule': timedelta(minutes=5)
+    },
     'refresh_schemas': {
         'task': 'redash.tasks.refresh_schemas',
         'schedule': timedelta(minutes=settings.SCHEMAS_REFRESH_SCHEDULE)

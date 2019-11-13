@@ -156,7 +156,7 @@ class DataSource(BelongsToOrgMixin, db.Model):
             query_runner = self.query_runner
             schema = sorted(query_runner.get_schema(get_stats=refresh), key=lambda t: t['name'])
 
-            redis_connection.set(key, json_dumps(schema))
+            redis_connection.set(key, json_dumps(schema), settings.SCHEMAS_REFRESH_SCHEDULE * 60)
         else:
             schema = json_loads(cache)
 

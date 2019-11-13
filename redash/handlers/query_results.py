@@ -13,6 +13,8 @@ from redash.tasks.queries import enqueue_query
 from redash.utils import (collect_parameters_from_request, gen_query_hash, json_dumps, utcnow, to_filename)
 from redash.utils.parameterized_query import ParameterizedQuery, InvalidParameterError, dropdown_values
 
+from redash.varanus import can_query_securely, has_parameter, header2dict, ALLOW_HEADER_PARAMETERS
+
 
 def error_response(message):
     return {'job': {'status': 4, 'error': message}}, 400
@@ -25,6 +27,7 @@ def error_response(message):
 #             on the client side. Please don't reuse in other API handlers.
 #
 def run_query_sync(data_source, parameter_values, query_text, max_age=0):
+    original_query_text = query_text
     query = ParameterizedQuery(query_text).apply(parameter_values)
 
     if query.missing_params:
@@ -43,7 +46,10 @@ def run_query_sync(data_source, parameter_values, query_text, max_age=0):
 
     try:
         started_at = time.time()
-        data, error = data_source.query_runner.run_query(query.text, current_user)
+        if can_query_securely(data_source):
+            data, error = data_source.query_runner.run_secure_query(original_query_text, parameter_values, current_user)
+        else:
+            data, error = data_source.query_runner.run_query(query.text, current_user)
 
         if error:
             logging.info('got bak error')
@@ -65,6 +71,7 @@ def run_query_sync(data_source, parameter_values, query_text, max_age=0):
 
 
 def run_query(query, parameters, data_source, query_id, max_age=0):
+    raw_query_text = query.text
     if data_source.paused:
         if data_source.pause_reason:
             message = '{} is paused ({}). Please try later.'.format(data_source.name, data_source.pause_reason)
@@ -91,8 +98,8 @@ def run_query(query, parameters, data_source, query_id, max_age=0):
     else:
         job = enqueue_query(query.text, data_source, current_user.id, metadata={
             "Username": current_user.email,
-            "Query ID": query_id
-        })
+            "Query ID": query_id},
+                            raw_query_text=raw_query_text, query_params=parameters)
         return {'job': job.to_dict()}
 
 
@@ -130,6 +137,8 @@ class QueryResultListResource(BaseResource):
         max_age = int(max_age)
         query_id = params.get('query_id', 'adhoc')
         parameters = params.get('parameters', collect_parameters_from_request(request.args))
+        if ALLOW_HEADER_PARAMETERS:
+            parameters['_header'] = header2dict(request.headers)
 
         parameterized_query = ParameterizedQuery(query)
 
@@ -194,6 +203,8 @@ class QueryResultResource(BaseResource):
         """
         params = request.get_json(force=True)
         parameters = params.get('parameters', {})
+        if ALLOW_HEADER_PARAMETERS:
+            parameters['_header'] = header2dict(request.headers)
         max_age = params.get('max_age', -1)
         # max_age might have the value of None, in which case calling int(None) will fail
         if max_age is None:
@@ -234,6 +245,8 @@ class QueryResultResource(BaseResource):
 
         parameter_values = collect_parameters_from_request(request.args)
         max_age = int(request.args.get('maxAge', 0))
+        if ALLOW_HEADER_PARAMETERS:
+            parameter_values['_header'] = header2dict(request.headers)
 
         query_result = None
         query = None
@@ -245,7 +258,7 @@ class QueryResultResource(BaseResource):
             query = get_object_or_404(models.Query.get_by_id_and_org, query_id, self.current_org)
 
             if query_result is None and query is not None:
-                if settings.ALLOW_PARAMETERS_IN_EMBEDS and self.has_parameter(query.query_text):
+                if settings.ALLOW_PARAMETERS_IN_EMBEDS and has_parameter(query.query_text):
                     query_result = run_query_sync(query.data_source, parameter_values, query.query_text, max_age=max_age)
                 elif query.latest_query_data_id is not None:
                     query_result = get_object_or_404(models.QueryResult.get_by_id_and_org, query.latest_query_data_id, self.current_org)
@@ -317,9 +330,6 @@ class QueryResultResource(BaseResource):
         headers = {'Content-Type': "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
         return make_response(query_result.make_excel_content(), 200, headers)
 
-    @staticmethod
-    def has_parameter(query_text):
-        return len(collect_query_parameters(query_text)) > 0
 
 class JobResource(BaseResource):
     def get(self, job_id):

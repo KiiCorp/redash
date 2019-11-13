@@ -2,6 +2,9 @@ import datetime
 import importlib
 import logging
 import sys
+import re
+
+import pystache
 
 from redash.query_runner import *
 from redash.utils import json_dumps, json_loads
@@ -9,6 +12,9 @@ from redash import models
 from RestrictedPython import compile_restricted
 from RestrictedPython.Guards import safe_builtins
 
+
+from inspect import ismethod
+from redash import varanus
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +157,148 @@ class Python(BaseQueryRunner):
         result["rows"].append(values)
 
     @staticmethod
+    def can_access(user, data_source):
+        """Check user can access data source.
+
+        Parameters:
+        :user: user to access data_source
+        :data_source: data source to be accessed.
+        :return:
+        """
+
+        # check user is super admin.
+        org = models.Organization.query.filter(models.Organization.id == user.org_id).one()
+        for gid in user.group_ids:
+            group = models.Group.get_by_id_and_org(gid, org)
+            if "super_admin" in group.permissions:
+                return True
+
+        # check user can access the data source.
+        for gid in data_source.groups:
+            if gid in user.group_ids:
+                return True
+
+        return False
+
+    @staticmethod
+    def to_tenant_id_int(tenant_id):
+        if isinstance(tenant_id, int):
+            return tenant_id
+        elif isinstance(tenant_id, str):
+            return int(tenant_id)
+        elif isinstance(tenant_id, unicode):
+            return int(tenant_id)
+        else:
+            raise Exception("Wrong type of tenant id: %s." % type(tenant_id))
+
+    @staticmethod
+    def tenant_id2name(tenant_id):
+        """Convert tenant ID to table name.
+
+        Parameters:
+        :tenant_id: tenant ID
+        :return: table name
+        """
+
+        tid = Python.to_tenant_id_int(tenant_id)
+
+        if varanus.DBOBJ_PREFIX != '':
+            return "%s_tenant_%d" % (varanus.DBOBJ_PREFIX, tid,)
+        return "tenant_%d" % tid
+
+    @staticmethod
+    def can_query_securely(data_source):
+        if not hasattr(data_source.query_runner, 'run_shared_query'):
+            return False
+        return ismethod(data_source.query_runner.run_shared_query)
+
+    @staticmethod
+    def execute_shared_query(tenant_id, query, user, parameters):
+        """Run shared query from for a tenant.
+
+        Parameters:
+        :tenant_id string or string: tenant ID
+        :query string: Query to run
+        :user models.User: user to execute query
+        :parameters array: parameter for query.
+        """
+
+        tid = Python.to_tenant_id_int(tenant_id)
+        data_source_name = "datasource_%d" % tid
+
+        try:
+            data_source = models.DataSource.get_by_name(data_source_name)
+        except models.NoResultFound:
+            raise Exception("Wrong data source name: %s." % data_source_name)
+
+        if not Python.can_query_securely(data_source):
+            raise Exception("Data source is not secure: %s." % data_source_name)
+        if not Python.can_access(user, data_source):
+            raise Exception("Can't access data source name: %s." % data_source_name)
+        data, error = data_source.query_runner.run_shared_query(query, parameters, user)
+        if error is not None:
+            raise Exception(error)
+
+        # TODO: allow avoiding the json.dumps/loads in same process
+        return json_loads(data)
+
+
+    @staticmethod
+    def execute_parameterized_query(data_source_name_or_id, query, parameters, user):
+        """execute_query which can reject injection attack.
+
+        Parameters:
+        :data_source_name_or_id string|integer: Name or ID of the data source
+        :query str: Query to run
+        :parameters dict: parameter for query.
+        :user models.User: user to execute query
+        """
+
+        try:
+            if type(data_source_name_or_id) == int:
+                data_source = models.DataSource.get_by_id(data_source_name_or_id)
+            else:
+                data_source = models.DataSource.get_by_name(data_source_name_or_id)
+        except models.NoResultFound:
+            raise Exception("Wrong data source name/id: %s." % data_source_name_or_id)
+
+        if not Python.can_query_securely(data_source):
+            raise Exception("Data source is not secure: %s." % data_source.name)
+        if not Python.can_access(user, data_source):
+            raise Exception("Can't access data source name: %s." % data_source.name)
+        data, error = data_source.query_runner.run_shared_query(query, parameters, user)
+        if error is not None:
+            raise Exception(error)
+
+        # TODO: allow avoiding the json.dumps/loads in same process
+        return json_loads(data)
+
+
+    @staticmethod
+    def execute_restricted_query(data_source_name, query, user):
+        """Run query from specific data source.
+
+        Parameters:
+        :data_source_name string: Name of the data source
+        :query string: Query to run
+        :user models.User: user to execute query
+        """
+        try:
+            data_source = models.DataSource.get_by_name(data_source_name)
+        except models.NoResultFound:
+            raise Exception("Wrong data source name: %s." % data_source_name)
+
+        if not Python.can_access(user, data_source):
+            raise Exception("Can't access data source name: %s." % data_source_name)
+
+        data, error = data_source.query_runner.run_query(query, None)
+        if error is not None:
+            raise Exception(error)
+
+        # TODO: allow avoiding the json.dumps/loads in same process
+        return json_loads(data)
+
+    @staticmethod
     def execute_query(data_source_name_or_id, query):
         """Run query from specific data source.
 
@@ -217,6 +365,82 @@ class Python(BaseQueryRunner):
     def test_connection(self):
         pass
 
+    def run_secure_query(self, query, params, user):
+        try:
+            error = None
+
+            local_vals = {}
+            if '_header' in params:
+                local_vals['header'] = params['_header']
+                del params['_header']
+            local_vals['local_vals'] = params
+            local_vals.update(self._script_locals)
+            regular_query = re.sub(r'([\'"]?){{(.*?)}}\1', r"local_vals['{{\2}}']", query)
+            place_holders = {}
+            for k in params.keys():
+                place_holders[k] = k
+            secure_query = pystache.render(regular_query, place_holders)
+            code = compile_restricted(secure_query, '<string>', 'exec')
+
+            # The codes below are copied from run_query.
+            builtins = safe_builtins.copy()
+            builtins["_write_"] = self.custom_write
+            builtins["__import__"] = self.custom_import
+            builtins["_getattr_"] = getattr
+            builtins["getattr"] = getattr
+            builtins["_setattr_"] = setattr
+            builtins["setattr"] = setattr
+            builtins["_getitem_"] = self.custom_get_item
+            builtins["_getiter_"] = self.custom_get_iter
+            builtins["_print_"] = self._custom_print
+
+            # Layer in our own additional set of builtins that we have
+            # considered safe.
+            for key in self.safe_builtins:
+                builtins[key] = __builtins__[key]
+
+            restricted_globals = dict(__builtins__=builtins)
+            restricted_globals["get_query_result"] = self.get_query_result
+            restricted_globals["get_source_schema"] = self.get_source_schema
+            restricted_globals["execute_query"] = self.execute_query
+            restricted_globals["execute_restricted_query"] = lambda data_source_name, query: self.execute_restricted_query(data_source_name, query, user)
+            restricted_globals["execute_shared_query"] = lambda tenant_id, query: self.execute_shared_query(tenant_id, query, user, params)
+            restricted_globals["execute_parameterized_query"] = lambda data_source_name, query, parameters: self.execute_parameterized_query(data_source_name, query, parameters, user)
+            restricted_globals["tenant_id2name"] = self.tenant_id2name
+            restricted_globals["add_result_column"] = self.add_result_column
+            restricted_globals["add_result_row"] = self.add_result_row
+            restricted_globals["disable_print_log"] = self._custom_print.disable
+            restricted_globals["enable_print_log"] = self._custom_print.enable
+
+            # Supported data types
+            restricted_globals["TYPE_DATETIME"] = TYPE_DATETIME
+            restricted_globals["TYPE_BOOLEAN"] = TYPE_BOOLEAN
+            restricted_globals["TYPE_INTEGER"] = TYPE_INTEGER
+            restricted_globals["TYPE_STRING"] = TYPE_STRING
+            restricted_globals["TYPE_DATE"] = TYPE_DATE
+            restricted_globals["TYPE_FLOAT"] = TYPE_FLOAT
+
+
+            # TODO: Figure out the best way to have a timeout on a script
+            #       One option is to use ETA with Celery + timeouts on workers
+            #       And replacement of worker process every X requests handled.
+
+            # This is different from run_query.
+            # Third parameter is changed from self._script_locals to local_vals.
+            exec((code), restricted_globals, local_vals)
+
+            result = local_vals['result']
+            result['log'] = self._custom_print.lines
+            json_data = json_dumps(result)
+        except KeyboardInterrupt:
+            error = "Query cancelled by user."
+            json_data = None
+        except Exception as e:
+            error = str(type(e)) + " " + str(e)
+            json_data = None
+
+        return json_data, error
+
     def run_query(self, query, user):
         self._current_user = user
 
@@ -246,6 +470,7 @@ class Python(BaseQueryRunner):
             restricted_globals["get_source_schema"] = self.get_source_schema
             restricted_globals["get_current_user"] = self.get_current_user
             restricted_globals["execute_query"] = self.execute_query
+            restricted_globals["execute_restricted_query"] = lambda data_source_name, query: self.execute_restricted_query(data_source_name, query, user)
             restricted_globals["add_result_column"] = self.add_result_column
             restricted_globals["add_result_row"] = self.add_result_row
             restricted_globals["disable_print_log"] = self._custom_print.disable

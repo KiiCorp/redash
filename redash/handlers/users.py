@@ -296,6 +296,13 @@ class UserResource(BaseResource):
 
     @require_admin
     def delete(self, user_id):
+        extend = request.args.get('extend')
+        if extend is None:
+            return self.original_delete(user_id)
+        else:
+            return self.varanus_delete(user_id)
+
+    def original_delete(self, user_id):
         user = models.User.get_by_id_and_org(user_id, self.current_org)
         # admin cannot delete self; current user is an admin (`@require_admin`)
         # so just check user id
@@ -309,6 +316,59 @@ class UserResource(BaseResource):
         models.db.session.commit()
 
         return user.to_dict(with_api_key=is_admin_or_owner(user_id))
+
+    def varanus_delete(self, user_id):
+        # TODO: delete referred tables rows with CASCADE DELETE.
+        try:
+            def deleteAlerts(alerts):
+                id = [alert.id for alert in alerts]
+                models.AlertSubscription.query.filter(models.AlertSubscription.alert_id.in_(id)).delete(synchronize_session='fetch')
+                alerts.delete(synchronize_session='fetch')
+
+            def deleteQueries(queries):
+                id = [query.id for query in queries]
+                alerts = models.Alert.query.filter(models.Alert.query_id.in_(id))
+                deleteAlerts(alerts)
+                visualizations = models.Visualization.query.filter(models.Visualization.query_id.in_(id))
+                id = [visualization.id for visualization in visualizations]
+                models.Widget.query.filter(models.Widget.visualization_id.in_(id)).delete(synchronize_session='fetch')
+                visualizations.delete(synchronize_session='fetch')
+                queries.delete()
+
+            models.AccessPermission.query.filter(models.AccessPermission.grantor_id == user_id).delete()
+            models.AccessPermission.query.filter(models.AccessPermission.grantee_id == user_id).delete()
+            models.AlertSubscription.query.filter(models.AlertSubscription.user_id == user_id).delete()
+            models.QuerySnippet.query.filter(models.QuerySnippet.user_id == user_id).delete()
+            models.ApiKey.query.filter(models.ApiKey.created_by_id == user_id).delete()
+            models.Change.query.filter(models.Change.user_id == user_id).delete()
+            models.Event.query.filter(models.Event.user_id == user_id).delete()
+
+            dashboards = models.Dashboard.query.filter(models.Dashboard.user_id == user_id)
+            id = [dashboard.id for dashboard in dashboards]
+            models.Widget.query.filter(models.Widget.dashboard_id.in_(id)).delete(synchronize_session='fetch')
+            dashboards.delete()
+
+
+            notification_destinations = models.NotificationDestination.query.filter(models.NotificationDestination.user_id == user_id)
+            id = [notification_destination.id for notification_destination in notification_destinations]
+            models.AlertSubscription.query.filter(models.AlertSubscription.destination_id.in_(id)).delete(synchronize_session='fetch')
+            notification_destinations.delete()
+
+            alerts = models.Alert.query.filter(models.Alert.user_id == user_id)
+            deleteAlerts(alerts)
+
+            queries = models.Query.query.filter(models.Query.user_id == user_id)
+            deleteQueries(queries)
+
+            queries = models.Query.query.filter(models.Query.last_modified_by_id == user_id)
+            deleteQueries(queries)
+
+            models.User.query.filter(models.User.id == user_id, models.User.org == self.current_org).delete()
+            models.db.session.commit()
+        except IntegrityError as e:
+            abort(500)
+
+        return Response(status = 204, content_type = "")
 
 
 class UserForcibleGetResource(NoCheckResource):

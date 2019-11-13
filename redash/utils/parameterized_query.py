@@ -7,6 +7,8 @@ from redash.permissions import require_access, view_only
 from funcy import distinct
 from dateutil.parser import parse
 
+from redash.varanus import varanus_render
+
 
 def _pluck_name_and_value(default_column, row):
     row = {k.lower(): v for k, v in row.items()}
@@ -92,11 +94,14 @@ class ParameterizedQuery(object):
             raise InvalidParameterError(invalid_parameter_names)
         else:
             self.parameters.update(parameters)
-            self.query = mustache_render(self.template, self.parameters)
+            self.query = varanus_render(self.template, self.parameters)
 
         return self
 
     def _valid(self, name, value):
+        if name == "_header":
+            # avoid validation for request header. This is for varanus redash.
+            return True
         if not self.schema:
             return True
 
