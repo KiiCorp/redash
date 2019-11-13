@@ -14,7 +14,6 @@ const VisualizationEmbed = {
     const visualizationId = parseInt($routeParams.visualizationId, 10);
     this.showQueryDescription = $routeParams.showDescription;
     this.apiKey = $routeParams.api_key;
-    this.noTitle = $routeParams.no_title;
     this.logoUrl = logoUrl;
     this.query = new Query(this.data[0]);
     this.queryResult = new QueryResult(this.data[1]);
