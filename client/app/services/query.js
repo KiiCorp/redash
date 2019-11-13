@@ -214,21 +214,6 @@ class Parameters {
     try {
       const parts = Mustache.parse(this.query.query);
       parameters = uniq(collectParams(parts));
-
-      const sqlStmt = /^\s*result\s*=\s*execute_shared_query\(.*?,\s*(.+)\)$/m.exec(this.query.query);
-      if (sqlStmt && sqlStmt[1]) {
-        const matches = sqlStmt[1].matchAll(/%\((.+?)\)s/g);
-        const ps = Array.from(matches, m => m[1]);
-        parameters = uniq(parameters.concat(ps));
-      }
-      const re = /\bheader\[(['"])([a-zA-Z0-9\-_.]+)\1\]/g;
-      let header = re.exec(this.query.query);
-      const headerNames = [];
-      while (header !== null) {
-        headerNames.push(header[2]);
-        header = re.exec(this.query.query);
-      }
-      parameters = uniq(parameters.concat(headerNames));
     } catch (e) {
       logger('Failed parsing parameters: ', e);
       // Return current parameters so we don't reset the list
