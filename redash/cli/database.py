@@ -3,6 +3,7 @@ import time
 import sqlalchemy
 from flask.cli import AppGroup
 from flask_migrate import stamp
+import sqlalchemy
 from sqlalchemy.exc import DatabaseError
 
 manager = AppGroup(help="Manage the database (create/drop tables).")
