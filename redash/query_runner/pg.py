@@ -1,12 +1,15 @@
 import os
 import logging
 import select
+import re
 
 import psycopg2
 from psycopg2.extras import Range
 
 from redash.query_runner import *
 from redash.utils import JSONEncoder, json_dumps, json_loads
+
+import pystache
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +41,8 @@ class PostgreSQLJSONEncoder(JSONEncoder):
 
             items = [
                 o._bounds[0],
-                str(o._lower),
-                ', ',
-                str(o._upper),
-                o._bounds[1]
+                str(o._lower), ', ',
+                str(o._upper), o._bounds[1]
             ]
 
             return ''.join(items)
@@ -92,9 +93,9 @@ class PostgreSQL(BaseSQLQueryRunner):
                     "title": "Database Name"
                 },
                 "sslmode": {
-                   "type": "string",
-                   "title": "SSL Mode",
-                   "default": "prefer"
+                    "type": "string",
+                    "title": "SSL Mode",
+                    "default": "prefer"
                 }
             },
             "order": ['host', 'port', 'user', 'password'],
@@ -116,7 +117,8 @@ class PostgreSQL(BaseSQLQueryRunner):
 
         for row in results['rows']:
             if row['table_schema'] != 'public':
-                table_name = u'{}.{}'.format(row['table_schema'], row['table_name'])
+                table_name = u'{}.{}'.format(row['table_schema'],
+                                             row['table_name'])
             else:
                 table_name = row['table_name']
 
@@ -157,7 +159,15 @@ class PostgreSQL(BaseSQLQueryRunner):
         ON a.attrelid = c.oid
         AND a.attnum > 0
         AND NOT a.attisdropped
-        WHERE c.relkind IN ('r', 'v', 'm', 'f', 'p')
+        WHERE c.relkind IN ('m', 'f', 'p')
+
+        UNION
+
+        SELECT table_schema,
+               table_name,
+               column_name
+        FROM information_schema.columns
+        WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
         """
 
         self._get_definitions(schema, query)
@@ -165,15 +175,92 @@ class PostgreSQL(BaseSQLQueryRunner):
         return schema.values()
 
     def _get_connection(self):
-        connection = psycopg2.connect(user=self.configuration.get('user'),
-                                      password=self.configuration.get('password'),
-                                      host=self.configuration.get('host'),
-                                      port=self.configuration.get('port'),
-                                      dbname=self.configuration.get('dbname'),
-                                      sslmode=self.configuration.get('sslmode'),
-                                      async_=True)
+        connection = psycopg2.connect(
+            user=self.configuration.get('user'),
+            password=self.configuration.get('password'),
+            host=self.configuration.get('host'),
+            port=self.configuration.get('port'),
+            dbname=self.configuration.get('dbname'),
+            sslmode=self.configuration.get('sslmode'),
+            async_=True)
 
         return connection
+
+    def run_secure_query(self, query, params, user):
+        connection = self._get_connection()
+        _wait(connection, timeout=10)
+
+        cursor = connection.cursor()
+
+        try:
+            regular_query = re.sub(r'([\']?){{(.*?)}}\1', r'{{\2}}', query)
+            place_holders = {}
+            for k in params.keys():
+                place_holders[k] = '%({0})s'.format(k)
+            secure_query = pystache.render(regular_query, place_holders)
+
+            cursor.execute(secure_query, params)
+            _wait(connection)
+
+            if cursor.description is not None:
+                columns = self.fetch_columns([(i[0], types_map.get(i[1], None)) for i in cursor.description])
+                rows = [dict(zip((c['name'] for c in columns), row)) for row in cursor]
+
+                data = {'columns': columns, 'rows': rows}
+                error = None
+                json_data = json_dumps(data)
+            else:
+                error = 'Query completed but it returned no data.'
+                json_data = None
+        except (select.error, OSError) as e:
+            error = "Query interrupted. Please retry."
+            json_data = None
+        except psycopg2.DatabaseError as e:
+            error = e.message
+            json_data = None
+        except (KeyboardInterrupt, InterruptException):
+            connection.cancel()
+            error = "Query cancelled by user."
+            json_data = None
+        finally:
+            connection.close()
+
+        return json_data, error
+
+    def run_shared_query(self, query, params, user):
+        connection = self._get_connection()
+        _wait(connection, timeout=10)
+
+        cursor = connection.cursor()
+
+        try:
+            cursor.execute(query, params)
+            _wait(connection)
+
+            if cursor.description is not None:
+                columns = self.fetch_columns([(i[0], types_map.get(i[1], None)) for i in cursor.description])
+                rows = [dict(zip((c['name'] for c in columns), row)) for row in cursor]
+
+                data = {'columns': columns, 'rows': rows}
+                error = None
+                json_data = json_dumps(data)
+            else:
+                error = 'Query completed but it returned no data.'
+                json_data = None
+        except (select.error, OSError) as e:
+            error = "Query interrupted. Please retry."
+            json_data = None
+        except psycopg2.DatabaseError as e:
+            error = e.message
+            json_data = None
+        except (KeyboardInterrupt, InterruptException):
+            connection.cancel()
+            error = "Query cancelled by user."
+            json_data = None
+        finally:
+            connection.close()
+
+        return json_data, error
 
     def run_query(self, query, user):
         connection = self._get_connection()
@@ -186,12 +273,18 @@ class PostgreSQL(BaseSQLQueryRunner):
             _wait(connection)
 
             if cursor.description is not None:
-                columns = self.fetch_columns([(i[0], types_map.get(i[1], None)) for i in cursor.description])
-                rows = [dict(zip((c['name'] for c in columns), row)) for row in cursor]
+                columns = self.fetch_columns([(i[0], types_map.get(i[1], None))
+                                              for i in cursor.description])
+                rows = [
+                    dict(zip((c['name'] for c in columns), row))
+                    for row in cursor
+                ]
 
                 data = {'columns': columns, 'rows': rows}
                 error = None
-                json_data = json_dumps(data, ignore_nan=True, cls=PostgreSQLJSONEncoder)
+                json_data = json_dumps(data,
+                                       ignore_nan=True,
+                                       cls=PostgreSQLJSONEncoder)
             else:
                 error = 'Query completed but it returned no data.'
                 json_data = None
@@ -217,22 +310,23 @@ class Redshift(PostgreSQL):
         return "redshift"
 
     def _get_connection(self):
-        sslrootcert_path = os.path.join(os.path.dirname(__file__), './files/redshift-ca-bundle.crt')
+        sslrootcert_path = os.path.join(os.path.dirname(__file__),
+                                        './files/redshift-ca-bundle.crt')
 
-        connection = psycopg2.connect(user=self.configuration.get('user'),
-                                      password=self.configuration.get('password'),
-                                      host=self.configuration.get('host'),
-                                      port=self.configuration.get('port'),
-                                      dbname=self.configuration.get('dbname'),
-                                      sslmode=self.configuration.get('sslmode', 'prefer'),
-                                      sslrootcert=sslrootcert_path,
-                                      async_=True)
+        connection = psycopg2.connect(
+            user=self.configuration.get('user'),
+            password=self.configuration.get('password'),
+            host=self.configuration.get('host'),
+            port=self.configuration.get('port'),
+            dbname=self.configuration.get('dbname'),
+            sslmode=self.configuration.get('sslmode', 'prefer'),
+            sslrootcert=sslrootcert_path,
+            async_=True)
 
         return connection
 
     @classmethod
     def configuration_schema(cls):
-
         return {
             "type": "object",
             "properties": {
@@ -253,15 +347,39 @@ class Redshift(PostgreSQL):
                     "title": "Database Name"
                 },
                 "sslmode": {
-                   "type": "string",
-                   "title": "SSL Mode",
-                   "default": "prefer"
-                }
+                    "type": "string",
+                    "title": "SSL Mode",
+                    "default": "prefer"
+                },
+                "adhoc_query_group": {
+                    "type": "string",
+                    "title": "Query Group for Adhoc Queries",
+                    "default": "default"
+                },
+                "scheduled_query_group": {
+                    "type": "string",
+                    "title": "Query Group for Scheduled Queries",
+                    "default": "default"
+                },
             },
-            "order": ['host', 'port', 'user', 'password'],
+            "order": ['host', 'port', 'user', 'password', 'dbname', 'sslmode', 'adhoc_query_group', 'scheduled_query_group'],
             "required": ["dbname", "user", "password", "host", "port"],
             "secret": ["password"]
         }
+        
+    def annotate_query(self, query, metadata):
+        annotated = super(Redshift, self).annotate_query(query, metadata)
+
+        if metadata.get('Scheduled', False):
+            query_group = self.configuration.get('scheduled_query_group')
+        else:
+            query_group = self.configuration.get('adhoc_query_group')
+        
+        if query_group:
+            set_query_group = 'set query_group to {};'.format(query_group)
+            annotated = '{}\n{}'.format(set_query_group, annotated)
+        
+        return annotated
 
     def _get_tables(self, schema):
         # Use svv_columns to include internal & external (Spectrum) tables and views data for Redshift
@@ -297,10 +415,10 @@ class Redshift(PostgreSQL):
 
 
 class CockroachDB(PostgreSQL):
-
     @classmethod
     def type(cls):
         return "cockroach"
+
 
 register(PostgreSQL)
 register(Redshift)
